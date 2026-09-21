@@ -1,0 +1,3217 @@
+{
+  "tools": [
+    {
+      "name": "check_server",
+      "struct": "CheckServerInput",
+      "command": "get_gimp_info",
+      "kind": "handwritten",
+      "description": "Check whether the GIMP MCP plugin socket is reachable and responding.\n\nReturns a status dict:\n- connected: bool\n- host / port: where it tried\n- gimp_version: if connected successfully\n- error: description if not connected\n\nUse this before any other operation to verify the GIMP plugin is running.\nIf not connected, open GIMP and run Tools > Start MCP Server.",
+      "params": []
+    },
+    {
+      "name": "restart_server",
+      "struct": "RestartServerInput",
+      "command": "",
+      "kind": "handwritten",
+      "description": "Drop and re-establish the connection to the GIMP MCP plugin.\n\nUse this when:\n- GIMP was restarted after Claude Code was already running\n- The socket connection dropped mid-session\n- check_server() shows not connected but GIMP is open\n\nReturns the new connection status (same format as check_server).",
+      "params": []
+    },
+    {
+      "name": "new_canvas",
+      "struct": "NewCanvasInput",
+      "command": "new_canvas",
+      "kind": "object",
+      "description": "Create a new blank canvas in GIMP and open it in a display window.\n\nParameters:\n- width: Canvas width in pixels\n- height: Canvas height in pixels\n- name: Layer/image name (default: \"Untitled\")\n- color_mode: \"RGB\" (default), \"RGBA\", \"GRAY\", \"GRAYA\"\n- fill: Fill color for the background layer. Any CSS color name or\n        hex string: \"white\" (default), \"black\", \"transparent\",\n        \"#FF5733\", \"rgb(100,200,50)\", etc.\n- resolution: DPI resolution (default: 72)\n\nReturns:\n- image_id: internal GIMP image ID\n- width / height: confirmed dimensions\n- color_mode: confirmed mode\n- display_opened: whether a GIMP window was opened\n\nExamples:\n- new_canvas(1024, 1024) — white 1024x1024 RGB canvas\n- new_canvas(1920, 1080, name=\"Background\", fill=\"black\")\n- new_canvas(512, 512, color_mode=\"RGBA\", fill=\"transparent\")",
+      "params": [
+        {
+          "name": "width",
+          "field": "Width",
+          "goType": "int",
+          "description": "Canvas width in pixels",
+          "default": "",
+          "required": true
+        },
+        {
+          "name": "height",
+          "field": "Height",
+          "goType": "int",
+          "description": "Canvas height in pixels",
+          "default": "",
+          "required": true
+        },
+        {
+          "name": "name",
+          "field": "Name",
+          "goType": "*string",
+          "description": "Layer/image name (default: \"Untitled\")",
+          "default": "ptr(\"Untitled\")",
+          "required": false
+        },
+        {
+          "name": "color_mode",
+          "field": "ColorMode",
+          "goType": "*string",
+          "description": "\"RGB\" (default), \"RGBA\", \"GRAY\", \"GRAYA\"",
+          "default": "ptr(\"RGB\")",
+          "required": false
+        },
+        {
+          "name": "fill",
+          "field": "Fill",
+          "goType": "*string",
+          "description": "Fill color for the background layer. Any CSS color name or hex string: \"white\" (default), \"black\", \"transparent\", \"#FF5733\", \"rgb(100,200,50)\", etc.",
+          "default": "ptr(\"white\")",
+          "required": false
+        },
+        {
+          "name": "resolution",
+          "field": "Resolution",
+          "goType": "*int",
+          "description": "DPI resolution (default: 72)",
+          "default": "ptr(72)",
+          "required": false
+        }
+      ]
+    },
+    {
+      "name": "get_image_bitmap",
+      "struct": "GetImageBitmapInput",
+      "command": "get_image_bitmap",
+      "kind": "image",
+      "description": "Get the current open image in GIMP as an Image object with optional scaling and region selection.\n\nNo size restrictions — pass any max_width/max_height you need.\nFor large images, omit max_width/max_height to get the full resolution.\n\nSupports two main use cases:\n1. Full image with optional scaling (pass max_width/max_height)\n2. Region extraction with optional scaling (pass region dict)\n\nParameters:\n- max_width, max_height: Target dimensions for scaling (aspect-ratio preserved).\n  Omit for full resolution.\n- region: Dictionary with keys:\n    - origin_x, origin_y: Top-left corner of region to extract\n    - width, height: Dimensions of region to extract\n    - max_width, max_height: Optional scaling for the extracted region\n\nExamples:\n- Full image at full res: get_image_bitmap()\n- Full image scaled: get_image_bitmap(max_width=2048, max_height=2048)\n- Region: get_image_bitmap(region={\"origin_x\": 0, \"origin_y\": 0, \"width\": 512, \"height\": 512})\n\nReturns:\n- Image object containing PNG data in MCP-compliant format\n- Includes width, height, and base64-encoded image data\n\nThe returned Image object automatically handles base64 encoding and MIME types\naccording to the Model Context Protocol specification.\n\nRaises:\n- RuntimeError if no image is open, region is invalid, or export fails",
+      "params": [
+        {
+          "name": "max_width",
+          "field": "MaxWidth",
+          "goType": "*int",
+          "description": "Target dimensions for scaling (aspect-ratio preserved). Omit for full resolution.",
+          "default": "",
+          "required": false
+        },
+        {
+          "name": "max_height",
+          "field": "MaxHeight",
+          "goType": "*int",
+          "description": "Target dimensions for scaling (aspect-ratio preserved). Omit for full resolution.",
+          "default": "",
+          "required": false
+        },
+        {
+          "name": "region",
+          "field": "Region",
+          "goType": "map[string]any",
+          "description": "Dictionary with keys: - origin_x, origin_y: Top-left corner of region to extract - width, height: Dimensions of region to extract - max_width, max_height: Optional scaling for the extracted region",
+          "default": "",
+          "required": false
+        }
+      ]
+    },
+    {
+      "name": "get_image_metadata",
+      "struct": "GetImageMetadataInput",
+      "command": "get_image_metadata",
+      "kind": "object",
+      "description": "Get metadata about the current open image in GIMP without the bitmap data.\n\nReturns detailed information about the currently active image including:\n- Image dimensions (width, height)\n- Color mode and base type\n- Number of layers and channels\n- File information if available\n- Layer structure and properties\n\nThis is much faster than get_image_bitmap() since it doesn't export the actual image data.\nPerfect for when you only need to know image properties for decision making.\n\nReturns:\n- Dictionary containing comprehensive image metadata\n- Raises exception if no images are open",
+      "params": []
+    },
+    {
+      "name": "get_gimp_info",
+      "struct": "GetGimpInfoInput",
+      "command": "get_gimp_info",
+      "kind": "object",
+      "description": "Get comprehensive information about the GIMP installation and environment.\n\nReturns detailed information about GIMP that AI assistants need to understand\nthe current environment, including:\n- GIMP version and build information\n- Installation paths and directories\n- Available plugins and procedures\n- System configuration\n- Runtime environment details\n\nThis information helps AI assistants provide better support and troubleshooting\nby understanding the specific GIMP setup they're working with.\n\nReturns:\n- Dictionary containing comprehensive GIMP environment information\n- Raises exception if GIMP connection fails",
+      "params": []
+    },
+    {
+      "name": "get_state_snapshot",
+      "struct": "GetStateSnapshotInput",
+      "command": "get_image_bitmap",
+      "kind": "handwritten",
+      "description": "Return a live visual snapshot of the current image state — no file save needed.\n\nAI agents call this to get immediate visual feedback after any edit operation,\nletting them verify results and decide next steps without saving to disk.\n\nParameters:\n- image_index: Which open image to snapshot (default: 0 = most recent)\n- max_size: Maximum width/height of the returned preview in pixels (default: 512)\n- region: Optional dict {x, y, width, height} to zoom into a specific area\n          e.g. {\"x\": 200, \"y\": 300, \"width\": 100, \"height\": 80} for mouth area\n- label: Optional annotation label (logged but not drawn — for agent bookkeeping)\n\nReturns:\n- PNG image of the current GIMP canvas state (with alpha if present)\n\nTypical agent workflow:\n    1. open_image / new_canvas\n    2. <edit operations>\n    3. get_state_snapshot()          ← see result, decide next step\n    4. <more edits>\n    5. get_state_snapshot(region={\"x\":200,\"y\":300,\"width\":100,\"height\":80})\n    6. export_image when satisfied",
+      "params": [
+        {
+          "name": "image_index",
+          "field": "ImageIndex",
+          "goType": "int",
+          "description": "Which open image to snapshot (default: 0 = most recent)",
+          "default": "",
+          "required": false
+        },
+        {
+          "name": "max_size",
+          "field": "MaxSize",
+          "goType": "*int",
+          "description": "Maximum width/height of the returned preview in pixels (default: 512)",
+          "default": "ptr(512)",
+          "required": false
+        },
+        {
+          "name": "region",
+          "field": "Region",
+          "goType": "map[string]any",
+          "description": "Optional dict {x, y, width, height} to zoom into a specific area e.g. {\"x\": 200, \"y\": 300, \"width\": 100, \"height\": 80} for mouth area",
+          "default": "",
+          "required": false
+        },
+        {
+          "name": "label",
+          "field": "Label",
+          "goType": "string",
+          "description": "Optional annotation label (logged but not drawn — for agent bookkeeping)",
+          "default": "",
+          "required": false
+        }
+      ]
+    },
+    {
+      "name": "get_context_state",
+      "struct": "GetContextStateInput",
+      "command": "get_context_state",
+      "kind": "object",
+      "description": "Get the current GIMP context state (colors, brush, settings).\n\nIMPORTANT: Context state can be changed by the user in GIMP UI at any time.\nCheck context state before operations that depend on specific settings.\n\nReturns information about:\n- Foreground and background colors (RGB/RGBA values)\n- Current brush and its properties\n- Opacity setting (0-100%)\n- Paint/blend mode\n- Feather state and radius\n- Antialiasing state\n\nUse cases:\n- Verify colors before drawing operations\n- Check if feathering is enabled (avoid unwanted blurry edges)\n- Ensure correct opacity and blend mode\n- Detect if user changed settings in GIMP UI\n\nReturns:\n- Dictionary containing current context state\n- Raises exception if unable to get context state",
+      "params": []
+    },
+    {
+      "name": "call_api",
+      "struct": "CallAPIInput",
+      "command": "call_api",
+      "kind": "handwritten",
+      "description": "Run a GIMP procedure from the Procedural Database (PDB).\n\nThis is the escape hatch for anything the dedicated tools do not cover. It\nnames a procedure and passes its arguments; it does NOT execute source code.\n\nThe plug-in is built against libgimp, so there is no interpreter inside GIMP\nto evaluate snippets. Anything you would write in GIMP's Python-Fu console is\nexpressed as the procedure it calls:\n\n    Python-Fu                      call_api\n    Gimp.get_images()              api_path=\"gimp-get-images\"\n    image.get_layers()             api_path=\"gimp-image-get-layers\",\n                                   kwargs={\"image\": 1}\n    Gimp.displays_flush()          api_path=\"gimp-displays-flush\"\n\nParameters:\n- api_path: The PDB procedure name, e.g. \"gimp-image-get-layers\". GIMP spells\n            these with dashes.\n- args: Positional arguments, matched in order against the procedure's\n        declared arguments.\n- kwargs: Arguments by name. Preferred, and required when skipping any.\n\nArgument values:\n- Images, layers, drawables, channels and fonts are passed as integer ids,\n  the same ids the other tools return.\n- Colors are CSS strings: \"white\", \"#ff5733\", \"rgb(100,200,50)\".\n- Coordinate lists are flat arrays of numbers.\n- Pass -1 for an object argument that should be NULL, such as a layer's\n  parent.\n\nCall describe_procedure first when you do not know a procedure's exact\nargument names; GIMP rejects unknown names rather than ignoring them.\n\nReturns:\n- JSON with the procedure name and its return values. Object results are\n  returned as integer ids.\n\nFull procedure reference: https://developer.gimp.org/api/3.0/libgimp/",
+      "params": [
+        {
+          "name": "api_path",
+          "field": "APIPath",
+          "goType": "string",
+          "description": "The PDB procedure name, e.g. \"gimp-image-get-layers\"",
+          "default": "",
+          "required": true
+        },
+        {
+          "name": "args",
+          "field": "Args",
+          "goType": "[]any",
+          "description": "Positional arguments matched in order against the procedure's signature",
+          "default": "[]any{}",
+          "required": false
+        },
+        {
+          "name": "kwargs",
+          "field": "Kwargs",
+          "goType": "map[string]any",
+          "description": "Arguments by name; preferred over args",
+          "default": "map[string]any{}",
+          "required": false
+        }
+      ]
+    },
+    {
+      "name": "describe_procedure",
+      "struct": "DescribeProcedureInput",
+      "command": "describe_procedure",
+      "kind": "object",
+      "description": "List the arguments a GIMP PDB procedure takes.\n\nUse this before call_api to discover exact argument names and types, which\nGIMP requires to match precisely.\n\nParameters:\n- api_path: The PDB procedure name, e.g. \"gimp-image-scale\"\n\nReturns:\n- procedure: the name queried\n- arguments: ordered list of {name, type, blurb}\n\nExample:\n    describe_procedure(api_path=\"gimp-drawable-get-pixel\")\n    -> arguments: drawable (GimpDrawable), x-coord (gint), y-coord (gint)",
+      "params": [
+        {
+          "name": "api_path",
+          "field": "APIPath",
+          "goType": "string",
+          "description": "The PDB procedure name, e.g. \"gimp-image-scale\"",
+          "default": "",
+          "required": true
+        }
+      ]
+    },
+    {
+      "name": "open_image",
+      "struct": "OpenImageInput",
+      "command": "open_image",
+      "kind": "object",
+      "description": "Open an image file in GIMP and create a display window.\n\nParameters:\n- file_path: Absolute path to the image file to open (PNG, JPEG, TIFF, etc.)\n\nReturns:\n- image_id: internal GIMP image ID\n- width / height: image dimensions in pixels\n- color_mode: RGB / Grayscale / Indexed\n- num_layers: number of layers in the image\n- display_opened: whether a GIMP display window was created",
+      "params": [
+        {
+          "name": "file_path",
+          "field": "FilePath",
+          "goType": "string",
+          "description": "Absolute path to the image file to open (PNG, JPEG, TIFF, etc.)",
+          "default": "",
+          "required": true
+        }
+      ]
+    },
+    {
+      "name": "save_xcf",
+      "struct": "SaveXcfInput",
+      "command": "save_xcf",
+      "kind": "object",
+      "description": "Save the current image as a GIMP XCF file (preserves all layers and metadata).\n\nParameters:\n- file_path: Absolute path for the output .xcf file\n- image_index: Index of the image to save (default 0 = first open image)\n\nReturns:\n- status: \"success\" or \"error\"\n- file_path: confirmed output path",
+      "params": [
+        {
+          "name": "file_path",
+          "field": "FilePath",
+          "goType": "string",
+          "description": "Absolute path for the output .xcf file",
+          "default": "",
+          "required": true
+        },
+        {
+          "name": "image_index",
+          "field": "ImageIndex",
+          "goType": "int",
+          "description": "Index of the image to save (default 0 = first open image)",
+          "default": "",
+          "required": false
+        }
+      ]
+    },
+    {
+      "name": "export_image",
+      "struct": "ExportImageInput",
+      "command": "export_image",
+      "kind": "object",
+      "description": "Export the current image to a raster file (PNG, JPEG, WEBP, TIFF).\n\nParameters:\n- file_path: Absolute path for the output file\n- format: Output format — \"png\" (default), \"jpeg\", \"webp\", \"tiff\"\n- quality: JPEG/WEBP quality 1-100 (default 90; ignored for PNG/TIFF)\n- flatten: Flatten all layers before export (default True)\n- image_index: Index of the image to export (default 0)\n\nReturns:\n- status, file_path, format, file_size_bytes",
+      "params": [
+        {
+          "name": "file_path",
+          "field": "FilePath",
+          "goType": "string",
+          "description": "Absolute path for the output file",
+          "default": "",
+          "required": true
+        },
+        {
+          "name": "format",
+          "field": "Format",
+          "goType": "*string",
+          "description": "Output format — \"png\" (default), \"jpeg\", \"webp\", \"tiff\"",
+          "default": "ptr(\"png\")",
+          "required": false
+        },
+        {
+          "name": "quality",
+          "field": "Quality",
+          "goType": "*int",
+          "description": "JPEG/WEBP quality 1-100 (default 90; ignored for PNG/TIFF)",
+          "default": "ptr(90)",
+          "required": false
+        },
+        {
+          "name": "flatten",
+          "field": "Flatten",
+          "goType": "*bool",
+          "description": "Flatten all layers before export (default True)",
+          "default": "ptr(true)",
+          "required": false
+        },
+        {
+          "name": "image_index",
+          "field": "ImageIndex",
+          "goType": "int",
+          "description": "Index of the image to export (default 0)",
+          "default": "",
+          "required": false
+        }
+      ]
+    },
+    {
+      "name": "batch_export",
+      "struct": "BatchExportInput",
+      "command": "batch_export",
+      "kind": "object",
+      "description": "Export all open images (or a specific one) to a directory.\n\nParameters:\n- output_dir: Directory to write exported files into\n- format: \"png\", \"jpeg\", \"webp\", \"tiff\" (default \"png\")\n- quality: JPEG/WEBP quality (default 90)\n- name_pattern: Filename template — use {name} for image name, {index} for position\n- image_index: If set, export only that image; omit to export all open images\n\nReturns:\n- exported: list of {file_path, name, width, height}\n- count: number of files written\n- errors: list of any export errors",
+      "params": [
+        {
+          "name": "output_dir",
+          "field": "OutputDir",
+          "goType": "string",
+          "description": "Directory to write exported files into",
+          "default": "",
+          "required": true
+        },
+        {
+          "name": "format",
+          "field": "Format",
+          "goType": "*string",
+          "description": "\"png\", \"jpeg\", \"webp\", \"tiff\" (default \"png\")",
+          "default": "ptr(\"png\")",
+          "required": false
+        },
+        {
+          "name": "quality",
+          "field": "Quality",
+          "goType": "*int",
+          "description": "JPEG/WEBP quality (default 90)",
+          "default": "ptr(90)",
+          "required": false
+        },
+        {
+          "name": "name_pattern",
+          "field": "NamePattern",
+          "goType": "*string",
+          "description": "Filename template — use {name} for image name, {index} for position",
+          "default": "ptr(\"{name}\")",
+          "required": false
+        },
+        {
+          "name": "image_index",
+          "field": "ImageIndex",
+          "goType": "*int",
+          "description": "If set, export only that image; omit to export all open images",
+          "default": "",
+          "required": false
+        }
+      ]
+    },
+    {
+      "name": "auto_levels",
+      "struct": "AutoLevelsInput",
+      "command": "auto_levels",
+      "kind": "object",
+      "description": "Automatically stretch the tonal range of an image (auto levels / auto stretch contrast).\n\nParameters:\n- image_index: Index of the target image (default 0)\n- layer_name: Name of the layer to adjust; defaults to active layer\n\nReturns status dict.",
+      "params": [
+        {
+          "name": "image_index",
+          "field": "ImageIndex",
+          "goType": "int",
+          "description": "Index of the target image (default 0)",
+          "default": "",
+          "required": false
+        },
+        {
+          "name": "layer_name",
+          "field": "LayerName",
+          "goType": "*string",
+          "description": "Name of the layer to adjust; defaults to active layer",
+          "default": "",
+          "required": false
+        }
+      ]
+    },
+    {
+      "name": "adjust_curves",
+      "struct": "AdjustCurvesInput",
+      "command": "adjust_curves",
+      "kind": "object",
+      "description": "Adjust tonal curves for a layer.\n\nParameters:\n- preset: Built-in curve shape — \"s_curve\" (default), \"lighten\", \"darken\", \"contrast\"\n- points: Custom control points as [[input, output], ...] override (overrides preset)\n- channel: \"value\" (all), \"red\", \"green\", \"blue\", \"alpha\"\n- image_index: Target image index (default 0)\n- layer_name: Layer to adjust; defaults to active layer\n\nReturns status dict.",
+      "params": [
+        {
+          "name": "preset",
+          "field": "Preset",
+          "goType": "*string",
+          "description": "Built-in curve shape — \"s_curve\" (default), \"lighten\", \"darken\", \"contrast\"",
+          "default": "ptr(\"s_curve\")",
+          "required": false
+        },
+        {
+          "name": "points",
+          "field": "Points",
+          "goType": "[]any",
+          "description": "Custom control points as [[input, output], ...] override (overrides preset)",
+          "default": "",
+          "required": false
+        },
+        {
+          "name": "channel",
+          "field": "Channel",
+          "goType": "*string",
+          "description": "\"value\" (all), \"red\", \"green\", \"blue\", \"alpha\"",
+          "default": "ptr(\"value\")",
+          "required": false
+        },
+        {
+          "name": "image_index",
+          "field": "ImageIndex",
+          "goType": "int",
+          "description": "Target image index (default 0)",
+          "default": "",
+          "required": false
+        },
+        {
+          "name": "layer_name",
+          "field": "LayerName",
+          "goType": "*string",
+          "description": "Layer to adjust; defaults to active layer",
+          "default": "",
+          "required": false
+        }
+      ]
+    },
+    {
+      "name": "adjust_brightness_contrast",
+      "struct": "AdjustBrightnessContrastInput",
+      "command": "adjust_brightness_contrast",
+      "kind": "object",
+      "description": "Adjust brightness and contrast of a layer.\n\nParameters:\n- brightness: -127 to +127 (default 0)\n- contrast: -127 to +127 (default 0)\n- image_index: Target image index (default 0)\n- layer_name: Layer to adjust; defaults to active layer\n\nReturns status dict.",
+      "params": [
+        {
+          "name": "brightness",
+          "field": "Brightness",
+          "goType": "int",
+          "description": "-127 to +127 (default 0)",
+          "default": "",
+          "required": false
+        },
+        {
+          "name": "contrast",
+          "field": "Contrast",
+          "goType": "int",
+          "description": "-127 to +127 (default 0)",
+          "default": "",
+          "required": false
+        },
+        {
+          "name": "image_index",
+          "field": "ImageIndex",
+          "goType": "int",
+          "description": "Target image index (default 0)",
+          "default": "",
+          "required": false
+        },
+        {
+          "name": "layer_name",
+          "field": "LayerName",
+          "goType": "*string",
+          "description": "Layer to adjust; defaults to active layer",
+          "default": "",
+          "required": false
+        }
+      ]
+    },
+    {
+      "name": "adjust_hue_saturation",
+      "struct": "AdjustHueSaturationInput",
+      "command": "adjust_hue_saturation",
+      "kind": "object",
+      "description": "Adjust hue, saturation, and lightness of a layer.\n\nParameters:\n- hue: Hue rotation -180 to +180 (default 0)\n- saturation: Saturation shift -100 to +100 (default 0)\n- lightness: Lightness shift -100 to +100 (default 0)\n- color_range: \"all\", \"red\", \"yellow\", \"green\", \"cyan\", \"blue\", \"magenta\" (default \"all\")\n- image_index: Target image index (default 0)\n- layer_name: Layer to adjust; defaults to active layer\n\nReturns status dict.",
+      "params": [
+        {
+          "name": "hue",
+          "field": "Hue",
+          "goType": "float64",
+          "description": "Hue rotation -180 to +180 (default 0)",
+          "default": "",
+          "required": false
+        },
+        {
+          "name": "saturation",
+          "field": "Saturation",
+          "goType": "float64",
+          "description": "Saturation shift -100 to +100 (default 0)",
+          "default": "",
+          "required": false
+        },
+        {
+          "name": "lightness",
+          "field": "Lightness",
+          "goType": "float64",
+          "description": "Lightness shift -100 to +100 (default 0)",
+          "default": "",
+          "required": false
+        },
+        {
+          "name": "color_range",
+          "field": "ColorRange",
+          "goType": "*string",
+          "description": "\"all\", \"red\", \"yellow\", \"green\", \"cyan\", \"blue\", \"magenta\" (default \"all\")",
+          "default": "ptr(\"all\")",
+          "required": false
+        },
+        {
+          "name": "image_index",
+          "field": "ImageIndex",
+          "goType": "int",
+          "description": "Target image index (default 0)",
+          "default": "",
+          "required": false
+        },
+        {
+          "name": "layer_name",
+          "field": "LayerName",
+          "goType": "*string",
+          "description": "Layer to adjust; defaults to active layer",
+          "default": "",
+          "required": false
+        }
+      ]
+    },
+    {
+      "name": "adjust_color_balance",
+      "struct": "AdjustColorBalanceInput",
+      "command": "adjust_color_balance",
+      "kind": "object",
+      "description": "Adjust color balance (shadows / midtones / highlights) of a layer.\n\nParameters:\n- cyan_red: -100 to +100 (negative = cyan, positive = red; default 0)\n- magenta_green: -100 to +100 (default 0)\n- yellow_blue: -100 to +100 (default 0)\n- range: \"shadows\", \"midtones\" (default), \"highlights\"\n- image_index: Target image index (default 0)\n- layer_name: Layer to adjust; defaults to active layer\n\nReturns status dict.",
+      "params": [
+        {
+          "name": "cyan_red",
+          "field": "CyanRed",
+          "goType": "float64",
+          "description": "-100 to +100 (negative = cyan, positive = red; default 0)",
+          "default": "",
+          "required": false
+        },
+        {
+          "name": "magenta_green",
+          "field": "MagentaGreen",
+          "goType": "float64",
+          "description": "-100 to +100 (default 0)",
+          "default": "",
+          "required": false
+        },
+        {
+          "name": "yellow_blue",
+          "field": "YellowBlue",
+          "goType": "float64",
+          "description": "-100 to +100 (default 0)",
+          "default": "",
+          "required": false
+        },
+        {
+          "name": "range",
+          "field": "Range",
+          "goType": "*string",
+          "description": "\"shadows\", \"midtones\" (default), \"highlights\"",
+          "default": "ptr(\"midtones\")",
+          "required": false
+        },
+        {
+          "name": "image_index",
+          "field": "ImageIndex",
+          "goType": "int",
+          "description": "Target image index (default 0)",
+          "default": "",
+          "required": false
+        },
+        {
+          "name": "layer_name",
+          "field": "LayerName",
+          "goType": "*string",
+          "description": "Layer to adjust; defaults to active layer",
+          "default": "",
+          "required": false
+        }
+      ]
+    },
+    {
+      "name": "sharpen",
+      "struct": "SharpenInput",
+      "command": "sharpen",
+      "kind": "object",
+      "description": "Sharpen a layer using unsharp mask.\n\nParameters:\n- amount: Sharpening strength 0-500 (default 50.0)\n- radius: Blur radius for the mask in pixels (default 3.0)\n- threshold: Minimum difference before sharpening is applied (default 0)\n- image_index: Target image index (default 0)\n- layer_name: Layer to sharpen; defaults to active layer\n\nReturns status dict.",
+      "params": [
+        {
+          "name": "amount",
+          "field": "Amount",
+          "goType": "*float64",
+          "description": "Sharpening strength 0-500 (default 50.0)",
+          "default": "ptr(50.0)",
+          "required": false
+        },
+        {
+          "name": "radius",
+          "field": "Radius",
+          "goType": "*float64",
+          "description": "Blur radius for the mask in pixels (default 3.0)",
+          "default": "ptr(3.0)",
+          "required": false
+        },
+        {
+          "name": "threshold",
+          "field": "Threshold",
+          "goType": "int",
+          "description": "Minimum difference before sharpening is applied (default 0)",
+          "default": "",
+          "required": false
+        },
+        {
+          "name": "image_index",
+          "field": "ImageIndex",
+          "goType": "int",
+          "description": "Target image index (default 0)",
+          "default": "",
+          "required": false
+        },
+        {
+          "name": "layer_name",
+          "field": "LayerName",
+          "goType": "*string",
+          "description": "Layer to sharpen; defaults to active layer",
+          "default": "",
+          "required": false
+        }
+      ]
+    },
+    {
+      "name": "blur",
+      "struct": "BlurInput",
+      "command": "blur",
+      "kind": "object",
+      "description": "Apply Gaussian blur to a layer.\n\nParameters:\n- radius_x: Horizontal blur radius in pixels (default 5.0)\n- radius_y: Vertical blur radius in pixels (default 5.0)\n- image_index: Target image index (default 0)\n- layer_name: Layer to blur; defaults to active layer\n\nReturns status dict.",
+      "params": [
+        {
+          "name": "radius_x",
+          "field": "RadiusX",
+          "goType": "*float64",
+          "description": "Horizontal blur radius in pixels (default 5.0)",
+          "default": "ptr(5.0)",
+          "required": false
+        },
+        {
+          "name": "radius_y",
+          "field": "RadiusY",
+          "goType": "*float64",
+          "description": "Vertical blur radius in pixels (default 5.0)",
+          "default": "ptr(5.0)",
+          "required": false
+        },
+        {
+          "name": "image_index",
+          "field": "ImageIndex",
+          "goType": "int",
+          "description": "Target image index (default 0)",
+          "default": "",
+          "required": false
+        },
+        {
+          "name": "layer_name",
+          "field": "LayerName",
+          "goType": "*string",
+          "description": "Layer to blur; defaults to active layer",
+          "default": "",
+          "required": false
+        }
+      ]
+    },
+    {
+      "name": "denoise",
+      "struct": "DenoiseInput",
+      "command": "denoise",
+      "kind": "object",
+      "description": "Reduce noise in a layer using GEGL noise-reduction.\n\nParameters:\n- strength: Noise reduction strength 0-100 (default 50)\n- image_index: Target image index (default 0)\n- layer_name: Layer to denoise; defaults to active layer\n\nReturns status dict.",
+      "params": [
+        {
+          "name": "strength",
+          "field": "Strength",
+          "goType": "*int",
+          "description": "Noise reduction strength 0-100 (default 50)",
+          "default": "ptr(50)",
+          "required": false
+        },
+        {
+          "name": "image_index",
+          "field": "ImageIndex",
+          "goType": "int",
+          "description": "Target image index (default 0)",
+          "default": "",
+          "required": false
+        },
+        {
+          "name": "layer_name",
+          "field": "LayerName",
+          "goType": "*string",
+          "description": "Layer to denoise; defaults to active layer",
+          "default": "",
+          "required": false
+        }
+      ]
+    },
+    {
+      "name": "desaturate",
+      "struct": "DesaturateInput",
+      "command": "desaturate",
+      "kind": "object",
+      "description": "Convert a layer to grayscale (desaturate).\n\nParameters:\n- mode: Desaturation algorithm — \"luminosity\" (default), \"luma\", \"average\", \"lightness\"\n- image_index: Target image index (default 0)\n- layer_name: Layer to desaturate; defaults to active layer\n\nReturns status dict.",
+      "params": [
+        {
+          "name": "mode",
+          "field": "Mode",
+          "goType": "*string",
+          "description": "Desaturation algorithm — \"luminosity\" (default), \"luma\", \"average\", \"lightness\"",
+          "default": "ptr(\"luminosity\")",
+          "required": false
+        },
+        {
+          "name": "image_index",
+          "field": "ImageIndex",
+          "goType": "int",
+          "description": "Target image index (default 0)",
+          "default": "",
+          "required": false
+        },
+        {
+          "name": "layer_name",
+          "field": "LayerName",
+          "goType": "*string",
+          "description": "Layer to desaturate; defaults to active layer",
+          "default": "",
+          "required": false
+        }
+      ]
+    },
+    {
+      "name": "invert_colors",
+      "struct": "InvertColorsInput",
+      "command": "invert_colors",
+      "kind": "object",
+      "description": "Invert all colors in a layer (create a negative).\n\nParameters:\n- image_index: Target image index (default 0)\n- layer_name: Layer to invert; defaults to active layer\n\nReturns status dict.",
+      "params": [
+        {
+          "name": "image_index",
+          "field": "ImageIndex",
+          "goType": "int",
+          "description": "Target image index (default 0)",
+          "default": "",
+          "required": false
+        },
+        {
+          "name": "layer_name",
+          "field": "LayerName",
+          "goType": "*string",
+          "description": "Layer to invert; defaults to active layer",
+          "default": "",
+          "required": false
+        }
+      ]
+    },
+    {
+      "name": "scale_image",
+      "struct": "ScaleImageInput",
+      "command": "scale_image",
+      "kind": "object",
+      "description": "Scale an image to exact pixel dimensions.\n\nParameters:\n- width: Target width in pixels\n- height: Target height in pixels\n- interpolation: \"cubic\" (default), \"linear\", \"none\"\n- image_index: Target image index (default 0)\n\nReturns: {status, width, height}",
+      "params": [
+        {
+          "name": "width",
+          "field": "Width",
+          "goType": "int",
+          "description": "Target width in pixels",
+          "default": "",
+          "required": true
+        },
+        {
+          "name": "height",
+          "field": "Height",
+          "goType": "int",
+          "description": "Target height in pixels",
+          "default": "",
+          "required": true
+        },
+        {
+          "name": "interpolation",
+          "field": "Interpolation",
+          "goType": "*string",
+          "description": "\"cubic\" (default), \"linear\", \"none\"",
+          "default": "ptr(\"cubic\")",
+          "required": false
+        },
+        {
+          "name": "image_index",
+          "field": "ImageIndex",
+          "goType": "int",
+          "description": "Target image index (default 0)",
+          "default": "",
+          "required": false
+        }
+      ]
+    },
+    {
+      "name": "scale_to_fit",
+      "struct": "ScaleToFitInput",
+      "command": "scale_to_fit",
+      "kind": "object",
+      "description": "Scale an image to fit within a bounding box, preserving aspect ratio.\n\nParameters:\n- max_width: Maximum allowed width in pixels\n- max_height: Maximum allowed height in pixels\n- interpolation: \"cubic\" (default), \"linear\", \"none\"\n- image_index: Target image index (default 0)\n\nReturns: {status, width, height} — final dimensions after scaling",
+      "params": [
+        {
+          "name": "max_width",
+          "field": "MaxWidth",
+          "goType": "int",
+          "description": "Maximum allowed width in pixels",
+          "default": "",
+          "required": true
+        },
+        {
+          "name": "max_height",
+          "field": "MaxHeight",
+          "goType": "int",
+          "description": "Maximum allowed height in pixels",
+          "default": "",
+          "required": true
+        },
+        {
+          "name": "interpolation",
+          "field": "Interpolation",
+          "goType": "*string",
+          "description": "\"cubic\" (default), \"linear\", \"none\"",
+          "default": "ptr(\"cubic\")",
+          "required": false
+        },
+        {
+          "name": "image_index",
+          "field": "ImageIndex",
+          "goType": "int",
+          "description": "Target image index (default 0)",
+          "default": "",
+          "required": false
+        }
+      ]
+    },
+    {
+      "name": "crop_to_selection",
+      "struct": "CropToSelectionInput",
+      "command": "crop_to_selection",
+      "kind": "object",
+      "description": "Crop the image canvas to the current selection bounds.\n\nParameters:\n- autocrop: If True, auto-detect crop bounds instead of using selection (default False)\n- image_index: Target image index (default 0)\n\nReturns: {status, x, y, width, height} — crop region applied",
+      "params": [
+        {
+          "name": "autocrop",
+          "field": "Autocrop",
+          "goType": "bool",
+          "description": "If True, auto-detect crop bounds instead of using selection (default False)",
+          "default": "",
+          "required": false
+        },
+        {
+          "name": "image_index",
+          "field": "ImageIndex",
+          "goType": "int",
+          "description": "Target image index (default 0)",
+          "default": "",
+          "required": false
+        }
+      ]
+    },
+    {
+      "name": "crop_to_rect",
+      "struct": "CropToRectInput",
+      "command": "crop_to_rect",
+      "kind": "object",
+      "description": "Crop the image canvas to an explicit rectangle.\n\nParameters:\n- x, y: Top-left corner of the crop rectangle\n- width, height: Dimensions of the crop rectangle\n- image_index: Target image index (default 0)\n\nReturns: {status, x, y, width, height}",
+      "params": [
+        {
+          "name": "x",
+          "field": "X",
+          "goType": "int",
+          "description": "Top-left corner of the crop rectangle",
+          "default": "",
+          "required": true
+        },
+        {
+          "name": "y",
+          "field": "Y",
+          "goType": "int",
+          "description": "Top-left corner of the crop rectangle",
+          "default": "",
+          "required": true
+        },
+        {
+          "name": "width",
+          "field": "Width",
+          "goType": "int",
+          "description": "Dimensions of the crop rectangle",
+          "default": "",
+          "required": true
+        },
+        {
+          "name": "height",
+          "field": "Height",
+          "goType": "int",
+          "description": "Dimensions of the crop rectangle",
+          "default": "",
+          "required": true
+        },
+        {
+          "name": "image_index",
+          "field": "ImageIndex",
+          "goType": "int",
+          "description": "Target image index (default 0)",
+          "default": "",
+          "required": false
+        }
+      ]
+    },
+    {
+      "name": "rotate_image",
+      "struct": "RotateImageInput",
+      "command": "rotate_image",
+      "kind": "object",
+      "description": "Rotate the entire image.\n\nParameters:\n- angle: Rotation in degrees — 90, 180, 270 use lossless GIMP rotation;\n         other values rotate all layers with interpolation and flatten\n- image_index: Target image index (default 0)\n\nReturns status dict.",
+      "params": [
+        {
+          "name": "angle",
+          "field": "Angle",
+          "goType": "float64",
+          "description": "Rotation in degrees — 90, 180, 270 use lossless GIMP rotation; other values rotate all layers with interpolation and flatten",
+          "default": "",
+          "required": true
+        },
+        {
+          "name": "image_index",
+          "field": "ImageIndex",
+          "goType": "int",
+          "description": "Target image index (default 0)",
+          "default": "",
+          "required": false
+        }
+      ]
+    },
+    {
+      "name": "flip_image",
+      "struct": "FlipImageInput",
+      "command": "flip_image",
+      "kind": "object",
+      "description": "Flip the entire image horizontally or vertically.\n\nParameters:\n- direction: \"horizontal\" (default) or \"vertical\"\n- image_index: Target image index (default 0)\n\nReturns status dict.",
+      "params": [
+        {
+          "name": "direction",
+          "field": "Direction",
+          "goType": "*string",
+          "description": "\"horizontal\" (default) or \"vertical\"",
+          "default": "ptr(\"horizontal\")",
+          "required": false
+        },
+        {
+          "name": "image_index",
+          "field": "ImageIndex",
+          "goType": "int",
+          "description": "Target image index (default 0)",
+          "default": "",
+          "required": false
+        }
+      ]
+    },
+    {
+      "name": "resize_canvas",
+      "struct": "ResizeCanvasInput",
+      "command": "resize_canvas",
+      "kind": "object",
+      "description": "Resize the image canvas without scaling the content.\n\nParameters:\n- width, height: New canvas dimensions in pixels\n- anchor: Position of existing content — \"center\" (default), \"top-left\", \"top\",\n          \"top-right\", \"left\", \"right\", \"bottom-left\", \"bottom\", \"bottom-right\"\n- fill: Color for new canvas areas — CSS color or \"transparent\"\n- image_index: Target image index (default 0)\n\nReturns: {status, width, height, offset_x, offset_y}",
+      "params": [
+        {
+          "name": "width",
+          "field": "Width",
+          "goType": "int",
+          "description": "New canvas dimensions in pixels",
+          "default": "",
+          "required": true
+        },
+        {
+          "name": "height",
+          "field": "Height",
+          "goType": "int",
+          "description": "New canvas dimensions in pixels",
+          "default": "",
+          "required": true
+        },
+        {
+          "name": "anchor",
+          "field": "Anchor",
+          "goType": "*string",
+          "description": "Position of existing content — \"center\" (default), \"top-left\", \"top\", \"top-right\", \"left\", \"right\", \"bottom-left\", \"bottom\", \"bottom-right\"",
+          "default": "ptr(\"center\")",
+          "required": false
+        },
+        {
+          "name": "fill",
+          "field": "Fill",
+          "goType": "*string",
+          "description": "Color for new canvas areas — CSS color or \"transparent\"",
+          "default": "ptr(\"transparent\")",
+          "required": false
+        },
+        {
+          "name": "image_index",
+          "field": "ImageIndex",
+          "goType": "int",
+          "description": "Target image index (default 0)",
+          "default": "",
+          "required": false
+        }
+      ]
+    },
+    {
+      "name": "select_rectangle",
+      "struct": "SelectRectangleInput",
+      "command": "select_rectangle",
+      "kind": "object",
+      "description": "Create a rectangular selection.\n\nParameters:\n- x, y: Top-left corner of the selection\n- width, height: Dimensions of the selection\n- operation: \"replace\" (default), \"add\", \"subtract\", \"intersect\"\n- feather: Feather radius in pixels (default 0 = no feather)\n- image_index: Target image index (default 0)\n\nReturns status dict.",
+      "params": [
+        {
+          "name": "x",
+          "field": "X",
+          "goType": "int",
+          "description": "Top-left corner of the selection",
+          "default": "",
+          "required": true
+        },
+        {
+          "name": "y",
+          "field": "Y",
+          "goType": "int",
+          "description": "Top-left corner of the selection",
+          "default": "",
+          "required": true
+        },
+        {
+          "name": "width",
+          "field": "Width",
+          "goType": "int",
+          "description": "Dimensions of the selection",
+          "default": "",
+          "required": true
+        },
+        {
+          "name": "height",
+          "field": "Height",
+          "goType": "int",
+          "description": "Dimensions of the selection",
+          "default": "",
+          "required": true
+        },
+        {
+          "name": "operation",
+          "field": "Operation",
+          "goType": "*string",
+          "description": "\"replace\" (default), \"add\", \"subtract\", \"intersect\"",
+          "default": "ptr(\"replace\")",
+          "required": false
+        },
+        {
+          "name": "feather",
+          "field": "Feather",
+          "goType": "float64",
+          "description": "Feather radius in pixels (default 0 = no feather)",
+          "default": "",
+          "required": false
+        },
+        {
+          "name": "image_index",
+          "field": "ImageIndex",
+          "goType": "int",
+          "description": "Target image index (default 0)",
+          "default": "",
+          "required": false
+        }
+      ]
+    },
+    {
+      "name": "select_ellipse",
+      "struct": "SelectEllipseInput",
+      "command": "select_ellipse",
+      "kind": "object",
+      "description": "Create an elliptical selection.\n\nParameters:\n- x, y: Top-left corner of the bounding box\n- width, height: Bounding box dimensions\n- operation: \"replace\" (default), \"add\", \"subtract\", \"intersect\"\n- feather: Feather radius in pixels (default 0)\n- image_index: Target image index (default 0)\n\nReturns status dict.",
+      "params": [
+        {
+          "name": "x",
+          "field": "X",
+          "goType": "int",
+          "description": "Top-left corner of the bounding box",
+          "default": "",
+          "required": true
+        },
+        {
+          "name": "y",
+          "field": "Y",
+          "goType": "int",
+          "description": "Top-left corner of the bounding box",
+          "default": "",
+          "required": true
+        },
+        {
+          "name": "width",
+          "field": "Width",
+          "goType": "int",
+          "description": "Bounding box dimensions",
+          "default": "",
+          "required": true
+        },
+        {
+          "name": "height",
+          "field": "Height",
+          "goType": "int",
+          "description": "Bounding box dimensions",
+          "default": "",
+          "required": true
+        },
+        {
+          "name": "operation",
+          "field": "Operation",
+          "goType": "*string",
+          "description": "\"replace\" (default), \"add\", \"subtract\", \"intersect\"",
+          "default": "ptr(\"replace\")",
+          "required": false
+        },
+        {
+          "name": "feather",
+          "field": "Feather",
+          "goType": "float64",
+          "description": "Feather radius in pixels (default 0)",
+          "default": "",
+          "required": false
+        },
+        {
+          "name": "image_index",
+          "field": "ImageIndex",
+          "goType": "int",
+          "description": "Target image index (default 0)",
+          "default": "",
+          "required": false
+        }
+      ]
+    },
+    {
+      "name": "select_by_color",
+      "struct": "SelectByColorInput",
+      "command": "select_by_color",
+      "kind": "object",
+      "description": "Select regions by color similarity.\n\nParameters:\n- color: Target color as CSS name, hex (#rrggbb), or rgb() string\n- threshold: Color similarity tolerance 0-255 (default 15)\n- operation: \"replace\" (default), \"add\", \"subtract\", \"intersect\"\n- image_index: Target image index (default 0)\n- layer_name: Layer to sample from; defaults to active layer\n\nReturns status dict.",
+      "params": [
+        {
+          "name": "color",
+          "field": "Color",
+          "goType": "string",
+          "description": "Target color as CSS name, hex (#rrggbb), or rgb() string",
+          "default": "",
+          "required": true
+        },
+        {
+          "name": "threshold",
+          "field": "Threshold",
+          "goType": "*int",
+          "description": "Color similarity tolerance 0-255 (default 15)",
+          "default": "ptr(15)",
+          "required": false
+        },
+        {
+          "name": "operation",
+          "field": "Operation",
+          "goType": "*string",
+          "description": "\"replace\" (default), \"add\", \"subtract\", \"intersect\"",
+          "default": "ptr(\"replace\")",
+          "required": false
+        },
+        {
+          "name": "image_index",
+          "field": "ImageIndex",
+          "goType": "int",
+          "description": "Target image index (default 0)",
+          "default": "",
+          "required": false
+        },
+        {
+          "name": "layer_name",
+          "field": "LayerName",
+          "goType": "*string",
+          "description": "Layer to sample from; defaults to active layer",
+          "default": "",
+          "required": false
+        }
+      ]
+    },
+    {
+      "name": "select_all",
+      "struct": "SelectAllInput",
+      "command": "select_all",
+      "kind": "object",
+      "description": "Select the entire image canvas.\n\nParameters:\n- image_index: Target image index (default 0)\n\nReturns status dict.",
+      "params": [
+        {
+          "name": "image_index",
+          "field": "ImageIndex",
+          "goType": "int",
+          "description": "Target image index (default 0)",
+          "default": "",
+          "required": false
+        }
+      ]
+    },
+    {
+      "name": "select_none",
+      "struct": "SelectNoneInput",
+      "command": "select_none",
+      "kind": "object",
+      "description": "Remove / deselect all selections.\n\nParameters:\n- image_index: Target image index (default 0)\n\nReturns status dict.",
+      "params": [
+        {
+          "name": "image_index",
+          "field": "ImageIndex",
+          "goType": "int",
+          "description": "Target image index (default 0)",
+          "default": "",
+          "required": false
+        }
+      ]
+    },
+    {
+      "name": "invert_selection",
+      "struct": "InvertSelectionInput",
+      "command": "invert_selection",
+      "kind": "object",
+      "description": "Invert the current selection (select what is not selected).\n\nParameters:\n- image_index: Target image index (default 0)\n\nReturns status dict.",
+      "params": [
+        {
+          "name": "image_index",
+          "field": "ImageIndex",
+          "goType": "int",
+          "description": "Target image index (default 0)",
+          "default": "",
+          "required": false
+        }
+      ]
+    },
+    {
+      "name": "modify_selection",
+      "struct": "ModifySelectionInput",
+      "command": "modify_selection",
+      "kind": "object",
+      "description": "Grow, shrink, feather, border, or sharpen the current selection.\n\nParameters:\n- operation: \"grow\", \"shrink\", \"feather\", \"border\", \"sharpen\"\n- amount: Pixel radius for grow/shrink/feather/border; ignored for sharpen\n- image_index: Target image index (default 0)\n\nReturns status dict.",
+      "params": [
+        {
+          "name": "operation",
+          "field": "Operation",
+          "goType": "string",
+          "description": "\"grow\", \"shrink\", \"feather\", \"border\", \"sharpen\"",
+          "default": "",
+          "required": true
+        },
+        {
+          "name": "amount",
+          "field": "Amount",
+          "goType": "float64",
+          "description": "Pixel radius for grow/shrink/feather/border; ignored for sharpen",
+          "default": "",
+          "required": true
+        },
+        {
+          "name": "image_index",
+          "field": "ImageIndex",
+          "goType": "int",
+          "description": "Target image index (default 0)",
+          "default": "",
+          "required": false
+        }
+      ]
+    },
+    {
+      "name": "create_layer",
+      "struct": "CreateLayerInput",
+      "command": "create_layer",
+      "kind": "object",
+      "description": "Create and insert a new layer into an image.\n\nParameters:\n- name: Layer name (default \"New Layer\")\n- width, height: Layer dimensions; defaults to image dimensions\n- fill: Initial fill — \"transparent\" (default), \"white\", \"black\", or any CSS color\n- opacity: Layer opacity 0-100 (default 100)\n- blend_mode: GIMP layer mode name — \"NORMAL\" (default), \"MULTIPLY\", \"SCREEN\", etc.\n- position: Stack position — -1 = top (default), 0 = bottom\n- image_index: Target image index (default 0)\n\nReturns: {layer_name, layer_id, width, height, position}",
+      "params": [
+        {
+          "name": "name",
+          "field": "Name",
+          "goType": "*string",
+          "description": "Layer name (default \"New Layer\")",
+          "default": "ptr(\"New Layer\")",
+          "required": false
+        },
+        {
+          "name": "width",
+          "field": "Width",
+          "goType": "*int",
+          "description": "Layer dimensions; defaults to image dimensions",
+          "default": "",
+          "required": false
+        },
+        {
+          "name": "height",
+          "field": "Height",
+          "goType": "*int",
+          "description": "Layer dimensions; defaults to image dimensions",
+          "default": "",
+          "required": false
+        },
+        {
+          "name": "fill",
+          "field": "Fill",
+          "goType": "*string",
+          "description": "Initial fill — \"transparent\" (default), \"white\", \"black\", or any CSS color",
+          "default": "ptr(\"transparent\")",
+          "required": false
+        },
+        {
+          "name": "opacity",
+          "field": "Opacity",
+          "goType": "*float64",
+          "description": "Layer opacity 0-100 (default 100)",
+          "default": "ptr(100.0)",
+          "required": false
+        },
+        {
+          "name": "blend_mode",
+          "field": "BlendMode",
+          "goType": "*string",
+          "description": "GIMP layer mode name — \"NORMAL\" (default), \"MULTIPLY\", \"SCREEN\", etc.",
+          "default": "ptr(\"NORMAL\")",
+          "required": false
+        },
+        {
+          "name": "position",
+          "field": "Position",
+          "goType": "*int",
+          "description": "Stack position — -1 = top (default), 0 = bottom",
+          "default": "ptr(-1)",
+          "required": false
+        },
+        {
+          "name": "image_index",
+          "field": "ImageIndex",
+          "goType": "int",
+          "description": "Target image index (default 0)",
+          "default": "",
+          "required": false
+        }
+      ]
+    },
+    {
+      "name": "add_image_layer",
+      "struct": "AddImageLayerInput",
+      "command": "add_image_layer",
+      "kind": "object",
+      "description": "Place an image file into the open image as a new layer.\n\nThis is how one image is composited into another: every other command works within a single image, so a logo, photo or texture is brought in here rather than by opening it separately.\n\nParameters:\n- file_path: Absolute path to the image file to place\n- x, y: Top-left corner for the layer (default 0, 0)\n- align: \"left\" (default, uses x), \"center\", or \"right\" (x is the right margin)\n- width, height: Scale the layer to this size; giving one keeps the aspect ratio\n- name: Name for the new layer\n- opacity: Layer opacity 0-100 (default 100)\n- position: Stack position — -1 = top (default), 0 = bottom\n- image_index: Target image index (default 0)\n\nReturns: {status, layer_id, width, height, position}",
+      "params": [
+        {
+          "name": "file_path",
+          "field": "FilePath",
+          "goType": "string",
+          "description": "Absolute path to the image file to place",
+          "default": "",
+          "required": true
+        },
+        {
+          "name": "x",
+          "field": "X",
+          "goType": "int",
+          "description": "Top-left corner for the layer (default 0)",
+          "default": "",
+          "required": false
+        },
+        {
+          "name": "y",
+          "field": "Y",
+          "goType": "int",
+          "description": "Top-left corner for the layer (default 0)",
+          "default": "",
+          "required": false
+        },
+        {
+          "name": "align",
+          "field": "Align",
+          "goType": "*string",
+          "description": "Horizontal placement: \"left\" (default), \"center\", or \"right\"",
+          "default": "",
+          "required": false
+        },
+        {
+          "name": "width",
+          "field": "Width",
+          "goType": "*int",
+          "description": "Scale the layer to this width; keeps aspect ratio if height is omitted",
+          "default": "",
+          "required": false
+        },
+        {
+          "name": "height",
+          "field": "Height",
+          "goType": "*int",
+          "description": "Scale the layer to this height; keeps aspect ratio if width is omitted",
+          "default": "",
+          "required": false
+        },
+        {
+          "name": "name",
+          "field": "Name",
+          "goType": "*string",
+          "description": "Name for the new layer",
+          "default": "",
+          "required": false
+        },
+        {
+          "name": "opacity",
+          "field": "Opacity",
+          "goType": "*float64",
+          "description": "Layer opacity 0-100 (default 100)",
+          "default": "ptr(100.0)",
+          "required": false
+        },
+        {
+          "name": "position",
+          "field": "Position",
+          "goType": "*int",
+          "description": "Stack position — -1 = top (default), 0 = bottom",
+          "default": "ptr(-1)",
+          "required": false
+        },
+        {
+          "name": "image_index",
+          "field": "ImageIndex",
+          "goType": "int",
+          "description": "Target image index (default 0)",
+          "default": "",
+          "required": false
+        }
+      ]
+    },
+    {
+      "name": "duplicate_layer",
+      "struct": "DuplicateLayerInput",
+      "command": "duplicate_layer",
+      "kind": "object",
+      "description": "Duplicate a layer and insert the copy above it.\n\nParameters:\n- layer_name: Name of the layer to duplicate; defaults to active layer\n- image_index: Target image index (default 0)\n\nReturns: {layer_name, layer_id}",
+      "params": [
+        {
+          "name": "layer_name",
+          "field": "LayerName",
+          "goType": "*string",
+          "description": "Name of the layer to duplicate; defaults to active layer",
+          "default": "",
+          "required": false
+        },
+        {
+          "name": "image_index",
+          "field": "ImageIndex",
+          "goType": "int",
+          "description": "Target image index (default 0)",
+          "default": "",
+          "required": false
+        }
+      ]
+    },
+    {
+      "name": "delete_layer",
+      "struct": "DeleteLayerInput",
+      "command": "delete_layer",
+      "kind": "object",
+      "description": "Delete a layer from an image.\n\nParameters:\n- layer_name: Name of the layer to delete\n- layer_index: Position index of the layer (alternative to layer_name)\n- image_index: Target image index (default 0)\n\nProvide either layer_name or layer_index. Defaults to active layer if neither given.\n\nReturns status dict.",
+      "params": [
+        {
+          "name": "layer_name",
+          "field": "LayerName",
+          "goType": "*string",
+          "description": "Name of the layer to delete",
+          "default": "",
+          "required": false
+        },
+        {
+          "name": "layer_index",
+          "field": "LayerIndex",
+          "goType": "*int",
+          "description": "Position index of the layer (alternative to layer_name)",
+          "default": "",
+          "required": false
+        },
+        {
+          "name": "image_index",
+          "field": "ImageIndex",
+          "goType": "int",
+          "description": "Target image index (default 0)",
+          "default": "",
+          "required": false
+        }
+      ]
+    },
+    {
+      "name": "rename_layer",
+      "struct": "RenameLayerInput",
+      "command": "rename_layer",
+      "kind": "object",
+      "description": "Rename a layer.\n\nParameters:\n- new_name: New name for the layer\n- old_name: Current name of the layer to rename\n- layer_index: Position index alternative to old_name\n- image_index: Target image index (default 0)\n\nReturns: {old_name, new_name}",
+      "params": [
+        {
+          "name": "new_name",
+          "field": "NewName",
+          "goType": "string",
+          "description": "New name for the layer",
+          "default": "",
+          "required": true
+        },
+        {
+          "name": "old_name",
+          "field": "OldName",
+          "goType": "*string",
+          "description": "Current name of the layer to rename",
+          "default": "",
+          "required": false
+        },
+        {
+          "name": "layer_index",
+          "field": "LayerIndex",
+          "goType": "*int",
+          "description": "Position index alternative to old_name",
+          "default": "",
+          "required": false
+        },
+        {
+          "name": "image_index",
+          "field": "ImageIndex",
+          "goType": "int",
+          "description": "Target image index (default 0)",
+          "default": "",
+          "required": false
+        }
+      ]
+    },
+    {
+      "name": "set_layer_properties",
+      "struct": "SetLayerPropertiesInput",
+      "command": "set_layer_properties",
+      "kind": "object",
+      "description": "Set properties on an existing layer.\n\nParameters:\n- layer_name / layer_index: Identify the layer (defaults to active layer)\n- opacity: New opacity 0-100 (omit to leave unchanged)\n- blend_mode: New GIMP layer mode name (omit to leave unchanged)\n- visible: True/False visibility (omit to leave unchanged)\n- image_index: Target image index (default 0)\n\nReturns status dict.",
+      "params": [
+        {
+          "name": "layer_name",
+          "field": "LayerName",
+          "goType": "*string",
+          "description": "Identify the layer (defaults to active layer)",
+          "default": "",
+          "required": false
+        },
+        {
+          "name": "layer_index",
+          "field": "LayerIndex",
+          "goType": "*int",
+          "description": "Identify the layer (defaults to active layer)",
+          "default": "",
+          "required": false
+        },
+        {
+          "name": "opacity",
+          "field": "Opacity",
+          "goType": "*float64",
+          "description": "New opacity 0-100 (omit to leave unchanged)",
+          "default": "",
+          "required": false
+        },
+        {
+          "name": "blend_mode",
+          "field": "BlendMode",
+          "goType": "*string",
+          "description": "New GIMP layer mode name (omit to leave unchanged)",
+          "default": "",
+          "required": false
+        },
+        {
+          "name": "visible",
+          "field": "Visible",
+          "goType": "*bool",
+          "description": "True/False visibility (omit to leave unchanged)",
+          "default": "",
+          "required": false
+        },
+        {
+          "name": "image_index",
+          "field": "ImageIndex",
+          "goType": "int",
+          "description": "Target image index (default 0)",
+          "default": "",
+          "required": false
+        }
+      ]
+    },
+    {
+      "name": "set_layer_offsets",
+      "struct": "SetLayerOffsetsInput",
+      "command": "set_layer_offsets",
+      "kind": "object",
+      "description": "Move a layer to an exact position on the canvas.\n\nParameters:\n- x, y: New top-left corner of the layer\n- align: \"left\" (default, uses x), \"center\", or \"right\" (x is the right margin)\n- layer_name / layer_index: Identify the layer (defaults to active layer)\n- image_index: Target image index (default 0)\n\nReturns: {status, layer_id, position}",
+      "params": [
+        {
+          "name": "x",
+          "field": "X",
+          "goType": "int",
+          "description": "New top-left corner of the layer",
+          "default": "",
+          "required": false
+        },
+        {
+          "name": "y",
+          "field": "Y",
+          "goType": "int",
+          "description": "New top-left corner of the layer",
+          "default": "",
+          "required": false
+        },
+        {
+          "name": "align",
+          "field": "Align",
+          "goType": "*string",
+          "description": "Horizontal placement: \"left\" (default), \"center\", or \"right\"",
+          "default": "",
+          "required": false
+        },
+        {
+          "name": "layer_name",
+          "field": "LayerName",
+          "goType": "*string",
+          "description": "Identify the layer (defaults to active layer)",
+          "default": "",
+          "required": false
+        },
+        {
+          "name": "layer_index",
+          "field": "LayerIndex",
+          "goType": "*int",
+          "description": "Identify the layer by stack position (defaults to active layer)",
+          "default": "",
+          "required": false
+        },
+        {
+          "name": "image_index",
+          "field": "ImageIndex",
+          "goType": "int",
+          "description": "Target image index (default 0)",
+          "default": "",
+          "required": false
+        }
+      ]
+    },
+    {
+      "name": "reorder_layer",
+      "struct": "ReorderLayerInput",
+      "command": "reorder_layer",
+      "kind": "object",
+      "description": "Move a layer to a new stack position.\n\nParameters:\n- new_position: Target stack index (0 = bottom)\n- layer_name / layer_index: Identify the layer (defaults to active layer)\n- image_index: Target image index (default 0)\n\nReturns status dict.",
+      "params": [
+        {
+          "name": "new_position",
+          "field": "NewPosition",
+          "goType": "int",
+          "description": "Target stack index (0 = bottom)",
+          "default": "",
+          "required": true
+        },
+        {
+          "name": "layer_name",
+          "field": "LayerName",
+          "goType": "*string",
+          "description": "Identify the layer (defaults to active layer)",
+          "default": "",
+          "required": false
+        },
+        {
+          "name": "layer_index",
+          "field": "LayerIndex",
+          "goType": "*int",
+          "description": "Identify the layer (defaults to active layer)",
+          "default": "",
+          "required": false
+        },
+        {
+          "name": "image_index",
+          "field": "ImageIndex",
+          "goType": "int",
+          "description": "Target image index (default 0)",
+          "default": "",
+          "required": false
+        }
+      ]
+    },
+    {
+      "name": "flatten_image",
+      "struct": "FlattenImageInput",
+      "command": "flatten_image",
+      "kind": "object",
+      "description": "Flatten all layers into a single background layer.\n\nParameters:\n- image_index: Target image index (default 0)\n\nReturns status dict.",
+      "params": [
+        {
+          "name": "image_index",
+          "field": "ImageIndex",
+          "goType": "int",
+          "description": "Target image index (default 0)",
+          "default": "",
+          "required": false
+        }
+      ]
+    },
+    {
+      "name": "merge_visible_layers",
+      "struct": "MergeVisibleLayersInput",
+      "command": "merge_visible_layers",
+      "kind": "object",
+      "description": "Merge all visible layers into a single layer.\n\nParameters:\n- image_index: Target image index (default 0)\n\nReturns: {layer_name, layer_id}",
+      "params": [
+        {
+          "name": "image_index",
+          "field": "ImageIndex",
+          "goType": "int",
+          "description": "Target image index (default 0)",
+          "default": "",
+          "required": false
+        }
+      ]
+    },
+    {
+      "name": "list_layers",
+      "struct": "ListLayersInput",
+      "command": "list_layers",
+      "kind": "object",
+      "description": "List all layers in an image with their properties.\n\nParameters:\n- image_index: Target image index (default 0)\n\nReturns: {layers: [{name, id, visible, opacity, blend_mode, width, height, has_alpha}], count}",
+      "params": [
+        {
+          "name": "image_index",
+          "field": "ImageIndex",
+          "goType": "int",
+          "description": "Target image index (default 0)",
+          "default": "",
+          "required": false
+        }
+      ]
+    },
+    {
+      "name": "fill_layer",
+      "struct": "FillLayerInput",
+      "command": "fill_layer",
+      "kind": "object",
+      "description": "Fill an entire layer with a solid color.\n\nParameters:\n- color: Fill color as CSS name, hex, or rgb() string\n- layer_name: Layer to fill; defaults to active layer\n- image_index: Target image index (default 0)\n\nReturns status dict.",
+      "params": [
+        {
+          "name": "color",
+          "field": "Color",
+          "goType": "string",
+          "description": "Fill color as CSS name, hex, or rgb() string",
+          "default": "",
+          "required": true
+        },
+        {
+          "name": "layer_name",
+          "field": "LayerName",
+          "goType": "*string",
+          "description": "Layer to fill; defaults to active layer",
+          "default": "",
+          "required": false
+        },
+        {
+          "name": "image_index",
+          "field": "ImageIndex",
+          "goType": "int",
+          "description": "Target image index (default 0)",
+          "default": "",
+          "required": false
+        }
+      ]
+    },
+    {
+      "name": "fill_selection",
+      "struct": "FillSelectionInput",
+      "command": "fill_selection",
+      "kind": "object",
+      "description": "Fill the current selection with a color or fill type.\n\nParameters:\n- color: Fill color as CSS name, hex, or rgb() string (used when fill_type is omitted)\n- fill_type: Fill type override: \"foreground\", \"background\", or \"transparent\"\n- image_index: Target image index (default 0)\n- layer_name: Target layer; defaults to active layer\n\nReturns status dict.",
+      "params": [
+        {
+          "name": "color",
+          "field": "Color",
+          "goType": "*string",
+          "description": "Fill color as CSS name, hex, or rgb() string (used when fill_type is omitted)",
+          "default": "",
+          "required": false
+        },
+        {
+          "name": "fill_type",
+          "field": "FillType",
+          "goType": "*string",
+          "description": "Fill type override: \"foreground\", \"background\", or \"transparent\"",
+          "default": "",
+          "required": false
+        },
+        {
+          "name": "image_index",
+          "field": "ImageIndex",
+          "goType": "int",
+          "description": "Target image index (default 0)",
+          "default": "",
+          "required": false
+        },
+        {
+          "name": "layer_name",
+          "field": "LayerName",
+          "goType": "*string",
+          "description": "Target layer; defaults to active layer",
+          "default": "",
+          "required": false
+        }
+      ]
+    },
+    {
+      "name": "set_colors",
+      "struct": "SetColorsInput",
+      "command": "set_colors",
+      "kind": "object",
+      "description": "Set the GIMP foreground and/or background color.\n\nParameters:\n- foreground: New foreground color (CSS name, hex, rgb()); omit to leave unchanged\n- background: New background color; omit to leave unchanged\n\nReturns: {foreground, background} confirmation dict.",
+      "params": [
+        {
+          "name": "foreground",
+          "field": "Foreground",
+          "goType": "*string",
+          "description": "New foreground color (CSS name, hex, rgb()); omit to leave unchanged",
+          "default": "",
+          "required": false
+        },
+        {
+          "name": "background",
+          "field": "Background",
+          "goType": "*string",
+          "description": "New background color; omit to leave unchanged",
+          "default": "",
+          "required": false
+        }
+      ]
+    },
+    {
+      "name": "draw_line",
+      "struct": "DrawLineInput",
+      "command": "draw_line",
+      "kind": "object",
+      "description": "Draw a straight line on a layer.\n\nParameters:\n- x1, y1: Start point\n- x2, y2: End point\n- color: Stroke color (CSS / hex / rgb); uses current foreground if omitted\n- width: Stroke width in pixels (default 2.0)\n- tool: \"pencil\" (default, hard edge) or \"paintbrush\" (soft edge)\n- layer_name: Target layer; defaults to active layer\n- image_index: Target image index (default 0)\n\nReturns status dict.",
+      "params": [
+        {
+          "name": "x1",
+          "field": "X1",
+          "goType": "float64",
+          "description": "Start point",
+          "default": "",
+          "required": true
+        },
+        {
+          "name": "y1",
+          "field": "Y1",
+          "goType": "float64",
+          "description": "Start point",
+          "default": "",
+          "required": true
+        },
+        {
+          "name": "x2",
+          "field": "X2",
+          "goType": "float64",
+          "description": "End point",
+          "default": "",
+          "required": true
+        },
+        {
+          "name": "y2",
+          "field": "Y2",
+          "goType": "float64",
+          "description": "End point",
+          "default": "",
+          "required": true
+        },
+        {
+          "name": "color",
+          "field": "Color",
+          "goType": "*string",
+          "description": "Stroke color (CSS / hex / rgb); uses current foreground if omitted",
+          "default": "",
+          "required": false
+        },
+        {
+          "name": "width",
+          "field": "Width",
+          "goType": "*float64",
+          "description": "Stroke width in pixels (default 2.0)",
+          "default": "ptr(2.0)",
+          "required": false
+        },
+        {
+          "name": "tool",
+          "field": "Tool",
+          "goType": "*string",
+          "description": "\"pencil\" (default, hard edge) or \"paintbrush\" (soft edge)",
+          "default": "ptr(\"pencil\")",
+          "required": false
+        },
+        {
+          "name": "layer_name",
+          "field": "LayerName",
+          "goType": "*string",
+          "description": "Target layer; defaults to active layer",
+          "default": "",
+          "required": false
+        },
+        {
+          "name": "image_index",
+          "field": "ImageIndex",
+          "goType": "int",
+          "description": "Target image index (default 0)",
+          "default": "",
+          "required": false
+        }
+      ]
+    },
+    {
+      "name": "draw_rectangle",
+      "struct": "DrawRectangleInput",
+      "command": "draw_rectangle",
+      "kind": "object",
+      "description": "Draw a rectangle outline (stroke only) on a layer.\n\nParameters:\n- x, y: Top-left corner\n- width, height: Rectangle dimensions\n- color: Stroke color; uses current foreground if omitted\n- line_width: Stroke width in pixels (default 2.0)\n- layer_name: Target layer; defaults to active layer\n- image_index: Target image index (default 0)\n\nReturns status dict.",
+      "params": [
+        {
+          "name": "x",
+          "field": "X",
+          "goType": "int",
+          "description": "Top-left corner",
+          "default": "",
+          "required": true
+        },
+        {
+          "name": "y",
+          "field": "Y",
+          "goType": "int",
+          "description": "Top-left corner",
+          "default": "",
+          "required": true
+        },
+        {
+          "name": "width",
+          "field": "Width",
+          "goType": "int",
+          "description": "Rectangle dimensions",
+          "default": "",
+          "required": true
+        },
+        {
+          "name": "height",
+          "field": "Height",
+          "goType": "int",
+          "description": "Rectangle dimensions",
+          "default": "",
+          "required": true
+        },
+        {
+          "name": "color",
+          "field": "Color",
+          "goType": "*string",
+          "description": "Stroke color; uses current foreground if omitted",
+          "default": "",
+          "required": false
+        },
+        {
+          "name": "line_width",
+          "field": "LineWidth",
+          "goType": "*float64",
+          "description": "Stroke width in pixels (default 2.0)",
+          "default": "ptr(2.0)",
+          "required": false
+        },
+        {
+          "name": "layer_name",
+          "field": "LayerName",
+          "goType": "*string",
+          "description": "Target layer; defaults to active layer",
+          "default": "",
+          "required": false
+        },
+        {
+          "name": "image_index",
+          "field": "ImageIndex",
+          "goType": "int",
+          "description": "Target image index (default 0)",
+          "default": "",
+          "required": false
+        }
+      ]
+    },
+    {
+      "name": "draw_ellipse",
+      "struct": "DrawEllipseInput",
+      "command": "draw_ellipse",
+      "kind": "object",
+      "description": "Draw an ellipse outline (stroke only) on a layer.\n\nParameters:\n- x, y: Top-left corner of the bounding box\n- width, height: Bounding box dimensions\n- color: Stroke color; uses current foreground if omitted\n- line_width: Stroke width in pixels (default 2.0)\n- layer_name: Target layer; defaults to active layer\n- image_index: Target image index (default 0)\n\nReturns status dict.",
+      "params": [
+        {
+          "name": "x",
+          "field": "X",
+          "goType": "int",
+          "description": "Top-left corner of the bounding box",
+          "default": "",
+          "required": true
+        },
+        {
+          "name": "y",
+          "field": "Y",
+          "goType": "int",
+          "description": "Top-left corner of the bounding box",
+          "default": "",
+          "required": true
+        },
+        {
+          "name": "width",
+          "field": "Width",
+          "goType": "int",
+          "description": "Bounding box dimensions",
+          "default": "",
+          "required": true
+        },
+        {
+          "name": "height",
+          "field": "Height",
+          "goType": "int",
+          "description": "Bounding box dimensions",
+          "default": "",
+          "required": true
+        },
+        {
+          "name": "color",
+          "field": "Color",
+          "goType": "*string",
+          "description": "Stroke color; uses current foreground if omitted",
+          "default": "",
+          "required": false
+        },
+        {
+          "name": "line_width",
+          "field": "LineWidth",
+          "goType": "*float64",
+          "description": "Stroke width in pixels (default 2.0)",
+          "default": "ptr(2.0)",
+          "required": false
+        },
+        {
+          "name": "layer_name",
+          "field": "LayerName",
+          "goType": "*string",
+          "description": "Target layer; defaults to active layer",
+          "default": "",
+          "required": false
+        },
+        {
+          "name": "image_index",
+          "field": "ImageIndex",
+          "goType": "int",
+          "description": "Target image index (default 0)",
+          "default": "",
+          "required": false
+        }
+      ]
+    },
+    {
+      "name": "fill_rectangle",
+      "struct": "FillRectangleInput",
+      "command": "fill_rectangle",
+      "kind": "object",
+      "description": "Fill a rectangular region with a solid color.\n\nParameters:\n- x, y: Top-left corner\n- width, height: Rectangle dimensions\n- color: Fill color (CSS name, hex, or rgb() string)\n- layer_name: Target layer; defaults to active layer\n- image_index: Target image index (default 0)\n\nReturns status dict.",
+      "params": [
+        {
+          "name": "x",
+          "field": "X",
+          "goType": "int",
+          "description": "Top-left corner",
+          "default": "",
+          "required": true
+        },
+        {
+          "name": "y",
+          "field": "Y",
+          "goType": "int",
+          "description": "Top-left corner",
+          "default": "",
+          "required": true
+        },
+        {
+          "name": "width",
+          "field": "Width",
+          "goType": "int",
+          "description": "Rectangle dimensions",
+          "default": "",
+          "required": true
+        },
+        {
+          "name": "height",
+          "field": "Height",
+          "goType": "int",
+          "description": "Rectangle dimensions",
+          "default": "",
+          "required": true
+        },
+        {
+          "name": "color",
+          "field": "Color",
+          "goType": "string",
+          "description": "Fill color (CSS name, hex, or rgb() string)",
+          "default": "",
+          "required": true
+        },
+        {
+          "name": "layer_name",
+          "field": "LayerName",
+          "goType": "*string",
+          "description": "Target layer; defaults to active layer",
+          "default": "",
+          "required": false
+        },
+        {
+          "name": "image_index",
+          "field": "ImageIndex",
+          "goType": "int",
+          "description": "Target image index (default 0)",
+          "default": "",
+          "required": false
+        }
+      ]
+    },
+    {
+      "name": "fill_ellipse",
+      "struct": "FillEllipseInput",
+      "command": "fill_ellipse",
+      "kind": "object",
+      "description": "Fill an elliptical region with a solid color.\n\nParameters:\n- x, y: Top-left corner of the bounding box\n- width, height: Bounding box dimensions\n- color: Fill color (CSS name, hex, or rgb() string)\n- layer_name: Target layer; defaults to active layer\n- image_index: Target image index (default 0)\n\nReturns status dict.",
+      "params": [
+        {
+          "name": "x",
+          "field": "X",
+          "goType": "int",
+          "description": "Top-left corner of the bounding box",
+          "default": "",
+          "required": true
+        },
+        {
+          "name": "y",
+          "field": "Y",
+          "goType": "int",
+          "description": "Top-left corner of the bounding box",
+          "default": "",
+          "required": true
+        },
+        {
+          "name": "width",
+          "field": "Width",
+          "goType": "int",
+          "description": "Bounding box dimensions",
+          "default": "",
+          "required": true
+        },
+        {
+          "name": "height",
+          "field": "Height",
+          "goType": "int",
+          "description": "Bounding box dimensions",
+          "default": "",
+          "required": true
+        },
+        {
+          "name": "color",
+          "field": "Color",
+          "goType": "string",
+          "description": "Fill color (CSS name, hex, or rgb() string)",
+          "default": "",
+          "required": true
+        },
+        {
+          "name": "layer_name",
+          "field": "LayerName",
+          "goType": "*string",
+          "description": "Target layer; defaults to active layer",
+          "default": "",
+          "required": false
+        },
+        {
+          "name": "image_index",
+          "field": "ImageIndex",
+          "goType": "int",
+          "description": "Target image index (default 0)",
+          "default": "",
+          "required": false
+        }
+      ]
+    },
+    {
+      "name": "gradient_fill",
+      "struct": "GradientFillInput",
+      "command": "gradient_fill",
+      "kind": "object",
+      "description": "Fill a layer or selection with a gradient.\n\nParameters:\n- color1: Start color (default \"black\")\n- color2: End color (default \"white\")\n- x1, y1: Gradient start point (default top-left 0,0)\n- x2, y2: Gradient end point (defaults to bottom-right of image)\n- gradient_type: \"linear\" (default) or \"radial\"\n- layer_name: Target layer; defaults to active layer\n- image_index: Target image index (default 0)\n\nReturns status dict.",
+      "params": [
+        {
+          "name": "color1",
+          "field": "Color1",
+          "goType": "*string",
+          "description": "Start color (default \"black\")",
+          "default": "ptr(\"black\")",
+          "required": false
+        },
+        {
+          "name": "color2",
+          "field": "Color2",
+          "goType": "*string",
+          "description": "End color (default \"white\")",
+          "default": "ptr(\"white\")",
+          "required": false
+        },
+        {
+          "name": "x1",
+          "field": "X1",
+          "goType": "float64",
+          "description": "Gradient start point (default top-left 0,0)",
+          "default": "",
+          "required": false
+        },
+        {
+          "name": "y1",
+          "field": "Y1",
+          "goType": "float64",
+          "description": "Gradient start point (default top-left 0,0)",
+          "default": "",
+          "required": false
+        },
+        {
+          "name": "x2",
+          "field": "X2",
+          "goType": "*float64",
+          "description": "Gradient end point (defaults to bottom-right of image)",
+          "default": "",
+          "required": false
+        },
+        {
+          "name": "y2",
+          "field": "Y2",
+          "goType": "*float64",
+          "description": "Gradient end point (defaults to bottom-right of image)",
+          "default": "",
+          "required": false
+        },
+        {
+          "name": "gradient_type",
+          "field": "GradientType",
+          "goType": "*string",
+          "description": "\"linear\" (default) or \"radial\"",
+          "default": "ptr(\"linear\")",
+          "required": false
+        },
+        {
+          "name": "layer_name",
+          "field": "LayerName",
+          "goType": "*string",
+          "description": "Target layer; defaults to active layer",
+          "default": "",
+          "required": false
+        },
+        {
+          "name": "image_index",
+          "field": "ImageIndex",
+          "goType": "int",
+          "description": "Target image index (default 0)",
+          "default": "",
+          "required": false
+        }
+      ]
+    },
+    {
+      "name": "add_text",
+      "struct": "AddTextInput",
+      "command": "add_text",
+      "kind": "object",
+      "description": "Add a text layer to an image.\n\nParameters:\n- text: The text string to render\n- x, y: Position of the text layer's top-left corner (default 0, 0)\n- font: Font family name — \"Sans\" (default), \"Serif\", etc.\n- size: Font size in pixels (default 24)\n- color: Text color (CSS name, hex, or rgb() string; default \"black\")\n- align: \"left\" (default, places the text at x), \"center\" to centre it on the\n         image, or \"right\" to place it x pixels in from the right edge\n- image_index: Target image index (default 0)\n\nCentring needs the rendered width, so prefer align over measuring the text\nand repositioning the layer yourself.\n\nReturns: {layer_name, layer_id, text_width, text_height, position}",
+      "params": [
+        {
+          "name": "text",
+          "field": "Text",
+          "goType": "string",
+          "description": "The text string to render",
+          "default": "",
+          "required": true
+        },
+        {
+          "name": "x",
+          "field": "X",
+          "goType": "int",
+          "description": "Position of the text layer's top-left corner (default 0, 0)",
+          "default": "",
+          "required": false
+        },
+        {
+          "name": "y",
+          "field": "Y",
+          "goType": "int",
+          "description": "Position of the text layer's top-left corner (default 0, 0)",
+          "default": "",
+          "required": false
+        },
+        {
+          "name": "font",
+          "field": "Font",
+          "goType": "*string",
+          "description": "Font family name — \"Sans\" (default), \"Serif\", etc.",
+          "default": "ptr(\"Sans\")",
+          "required": false
+        },
+        {
+          "name": "size",
+          "field": "Size",
+          "goType": "*int",
+          "description": "Font size in pixels (default 24)",
+          "default": "ptr(24)",
+          "required": false
+        },
+        {
+          "name": "color",
+          "field": "Color",
+          "goType": "*string",
+          "description": "Text color (CSS name, hex, or rgb() string; default \"black\")",
+          "default": "ptr(\"black\")",
+          "required": false
+        },
+        {
+          "name": "align",
+          "field": "Align",
+          "goType": "*string",
+          "description": "Horizontal placement: \"left\" (default, uses x), \"center\", or \"right\" (x is the right margin)",
+          "default": "",
+          "required": false
+        },
+        {
+          "name": "image_index",
+          "field": "ImageIndex",
+          "goType": "int",
+          "description": "Target image index (default 0)",
+          "default": "",
+          "required": false
+        }
+      ]
+    },
+    {
+      "name": "edit_text",
+      "struct": "EditTextInput",
+      "command": "edit_text",
+      "kind": "object",
+      "description": "Edit an existing text layer's content or formatting.\n\nParameters:\n- layer_name: Name of the text layer to edit\n- text: New text content (omit to leave unchanged)\n- font: New font family (omit to leave unchanged)\n- size: New font size in pixels (omit to leave unchanged)\n- color: New text color (omit to leave unchanged)\n- image_index: Target image index (default 0)\n\nReturns status dict.",
+      "params": [
+        {
+          "name": "layer_name",
+          "field": "LayerName",
+          "goType": "string",
+          "description": "Name of the text layer to edit",
+          "default": "",
+          "required": true
+        },
+        {
+          "name": "text",
+          "field": "Text",
+          "goType": "*string",
+          "description": "New text content (omit to leave unchanged)",
+          "default": "",
+          "required": false
+        },
+        {
+          "name": "font",
+          "field": "Font",
+          "goType": "*string",
+          "description": "New font family (omit to leave unchanged)",
+          "default": "",
+          "required": false
+        },
+        {
+          "name": "size",
+          "field": "Size",
+          "goType": "*float64",
+          "description": "New font size in pixels (omit to leave unchanged)",
+          "default": "",
+          "required": false
+        },
+        {
+          "name": "color",
+          "field": "Color",
+          "goType": "*string",
+          "description": "New text color (omit to leave unchanged)",
+          "default": "",
+          "required": false
+        },
+        {
+          "name": "image_index",
+          "field": "ImageIndex",
+          "goType": "int",
+          "description": "Target image index (default 0)",
+          "default": "",
+          "required": false
+        }
+      ]
+    },
+    {
+      "name": "list_fonts",
+      "struct": "ListFontsInput",
+      "command": "list_fonts",
+      "kind": "object",
+      "description": "List available fonts installed in GIMP.\n\nParameters:\n- filter: Optional string to filter font names (case-insensitive substring match)\n\nReturns: {fonts: [font_name, ...], count}",
+      "params": [
+        {
+          "name": "filter",
+          "field": "Filter",
+          "goType": "*string",
+          "description": "Optional string to filter font names (case-insensitive substring match)",
+          "default": "",
+          "required": false
+        }
+      ]
+    },
+    {
+      "name": "apply_drop_shadow",
+      "struct": "ApplyDropShadowInput",
+      "command": "apply_drop_shadow",
+      "kind": "object",
+      "description": "Apply a drop shadow effect to a layer.\n\nParameters:\n- offset_x, offset_y: Shadow offset in pixels (default 5, 5)\n- blur_radius: Shadow softness radius (default 10)\n- color: Shadow color (default \"black\")\n- opacity: Shadow opacity 0-100 (default 60)\n- layer_name: Target layer; defaults to active layer\n- image_index: Target image index (default 0)\n\nReturns status dict.",
+      "params": [
+        {
+          "name": "offset_x",
+          "field": "OffsetX",
+          "goType": "*int",
+          "description": "Shadow offset in pixels (default 5, 5)",
+          "default": "ptr(5)",
+          "required": false
+        },
+        {
+          "name": "offset_y",
+          "field": "OffsetY",
+          "goType": "*int",
+          "description": "Shadow offset in pixels (default 5, 5)",
+          "default": "ptr(5)",
+          "required": false
+        },
+        {
+          "name": "blur_radius",
+          "field": "BlurRadius",
+          "goType": "*float64",
+          "description": "Shadow softness radius (default 10)",
+          "default": "ptr(10.0)",
+          "required": false
+        },
+        {
+          "name": "color",
+          "field": "Color",
+          "goType": "*string",
+          "description": "Shadow color (default \"black\")",
+          "default": "ptr(\"black\")",
+          "required": false
+        },
+        {
+          "name": "opacity",
+          "field": "Opacity",
+          "goType": "*float64",
+          "description": "Shadow opacity 0-100 (default 60)",
+          "default": "ptr(60.0)",
+          "required": false
+        },
+        {
+          "name": "layer_name",
+          "field": "LayerName",
+          "goType": "*string",
+          "description": "Target layer; defaults to active layer",
+          "default": "",
+          "required": false
+        },
+        {
+          "name": "image_index",
+          "field": "ImageIndex",
+          "goType": "int",
+          "description": "Target image index (default 0)",
+          "default": "",
+          "required": false
+        }
+      ]
+    },
+    {
+      "name": "apply_gegl_filter",
+      "struct": "ApplyGeglFilterInput",
+      "command": "apply_gegl_filter",
+      "kind": "object",
+      "description": "Run any GEGL operation on a layer.\n\nThe dedicated effect tools cover the common operations; this reaches the rest of GEGL's catalogue, which call_api cannot, because GIMP 3 applies GEGL through libgimp rather than the PDB.\n\nOnly numeric properties can be set. Operations whose properties are colours or enums are not reachable this way, except where the operation samples a colour from the paint context.\n\nParameters:\n- operation: GEGL operation name, e.g. \"gegl:cartoon\", \"gegl:oilify\", \"gegl:posterize\"\n- settings: Numeric properties for the operation, e.g. {\"mask-radius\": 7.0, \"pct-black\": 0.2}\n- layer_name: Target layer; defaults to active layer\n- image_index: Target image index (default 0)\n\nExamples:\n- apply_gegl_filter(operation=\"gegl:cartoon\", settings={\"mask-radius\": 7.0, \"pct-black\": 0.2})\n- apply_gegl_filter(operation=\"gegl:oilify\", settings={\"mask-radius\": 4.0})\n\nReturns status dict.",
+      "params": [
+        {
+          "name": "operation",
+          "field": "Operation",
+          "goType": "string",
+          "description": "GEGL operation name, e.g. \"gegl:cartoon\"",
+          "default": "",
+          "required": true
+        },
+        {
+          "name": "settings",
+          "field": "Settings",
+          "goType": "map[string]float64",
+          "description": "Numeric properties for the operation, e.g. {\"mask-radius\": 7.0}",
+          "default": "",
+          "required": false
+        },
+        {
+          "name": "layer_name",
+          "field": "LayerName",
+          "goType": "*string",
+          "description": "Target layer; defaults to active layer",
+          "default": "",
+          "required": false
+        },
+        {
+          "name": "image_index",
+          "field": "ImageIndex",
+          "goType": "int",
+          "description": "Target image index (default 0)",
+          "default": "",
+          "required": false
+        }
+      ]
+    },
+    {
+      "name": "apply_gaussian_blur",
+      "struct": "ApplyGaussianBlurInput",
+      "command": "apply_gaussian_blur",
+      "kind": "object",
+      "description": "Apply Gaussian blur as a destructive filter operation.\n\nParameters:\n- radius: Blur radius in pixels (default 5.0)\n- layer_name: Target layer; defaults to active layer\n- image_index: Target image index (default 0)\n\nReturns status dict.",
+      "params": [
+        {
+          "name": "radius",
+          "field": "Radius",
+          "goType": "*float64",
+          "description": "Blur radius in pixels (default 5.0)",
+          "default": "ptr(5.0)",
+          "required": false
+        },
+        {
+          "name": "layer_name",
+          "field": "LayerName",
+          "goType": "*string",
+          "description": "Target layer; defaults to active layer",
+          "default": "",
+          "required": false
+        },
+        {
+          "name": "image_index",
+          "field": "ImageIndex",
+          "goType": "int",
+          "description": "Target image index (default 0)",
+          "default": "",
+          "required": false
+        }
+      ]
+    },
+    {
+      "name": "apply_pixelate",
+      "struct": "ApplyPixelateInput",
+      "command": "apply_pixelate",
+      "kind": "object",
+      "description": "Pixelate a layer using a mosaic/block effect.\n\nParameters:\n- block_size: Size of each mosaic block in pixels (default 10)\n- layer_name: Target layer; defaults to active layer\n- image_index: Target image index (default 0)\n\nReturns status dict.",
+      "params": [
+        {
+          "name": "block_size",
+          "field": "BlockSize",
+          "goType": "*int",
+          "description": "Size of each mosaic block in pixels (default 10)",
+          "default": "ptr(10)",
+          "required": false
+        },
+        {
+          "name": "layer_name",
+          "field": "LayerName",
+          "goType": "*string",
+          "description": "Target layer; defaults to active layer",
+          "default": "",
+          "required": false
+        },
+        {
+          "name": "image_index",
+          "field": "ImageIndex",
+          "goType": "int",
+          "description": "Target image index (default 0)",
+          "default": "",
+          "required": false
+        }
+      ]
+    },
+    {
+      "name": "apply_emboss",
+      "struct": "ApplyEmbossInput",
+      "command": "apply_emboss",
+      "kind": "object",
+      "description": "Apply an emboss (bas-relief) effect to a layer.\n\nParameters:\n- azimuth: Light direction in degrees 0-360 (default 315 = top-left)\n- elevation: Light elevation angle 0-90 (default 45)\n- depth: Effect depth/intensity (default 2)\n- layer_name: Target layer; defaults to active layer\n- image_index: Target image index (default 0)\n\nReturns status dict.",
+      "params": [
+        {
+          "name": "azimuth",
+          "field": "Azimuth",
+          "goType": "*float64",
+          "description": "Light direction in degrees 0-360 (default 315 = top-left)",
+          "default": "ptr(315.0)",
+          "required": false
+        },
+        {
+          "name": "elevation",
+          "field": "Elevation",
+          "goType": "*float64",
+          "description": "Light elevation angle 0-90 (default 45)",
+          "default": "ptr(45.0)",
+          "required": false
+        },
+        {
+          "name": "depth",
+          "field": "Depth",
+          "goType": "*float64",
+          "description": "Effect depth/intensity (default 2)",
+          "default": "ptr(2.0)",
+          "required": false
+        },
+        {
+          "name": "layer_name",
+          "field": "LayerName",
+          "goType": "*string",
+          "description": "Target layer; defaults to active layer",
+          "default": "",
+          "required": false
+        },
+        {
+          "name": "image_index",
+          "field": "ImageIndex",
+          "goType": "int",
+          "description": "Target image index (default 0)",
+          "default": "",
+          "required": false
+        }
+      ]
+    },
+    {
+      "name": "apply_vignette",
+      "struct": "ApplyVignetteInput",
+      "command": "apply_vignette",
+      "kind": "object",
+      "description": "Apply a vignette darkening effect around the edges of a layer.\n\nParameters:\n- softness: Edge softness / fade width (default 3.0)\n- shape: Shape factor — 1.0 = elliptical (default), values >1 = more rectangular\n- layer_name: Target layer; defaults to active layer\n- image_index: Target image index (default 0)\n\nReturns status dict.",
+      "params": [
+        {
+          "name": "softness",
+          "field": "Softness",
+          "goType": "*float64",
+          "description": "Edge softness / fade width (default 3.0)",
+          "default": "ptr(3.0)",
+          "required": false
+        },
+        {
+          "name": "shape",
+          "field": "Shape",
+          "goType": "*float64",
+          "description": "Shape factor — 1.0 = elliptical (default), values >1 = more rectangular",
+          "default": "ptr(1.0)",
+          "required": false
+        },
+        {
+          "name": "layer_name",
+          "field": "LayerName",
+          "goType": "*string",
+          "description": "Target layer; defaults to active layer",
+          "default": "",
+          "required": false
+        },
+        {
+          "name": "image_index",
+          "field": "ImageIndex",
+          "goType": "int",
+          "description": "Target image index (default 0)",
+          "default": "",
+          "required": false
+        }
+      ]
+    },
+    {
+      "name": "apply_noise",
+      "struct": "ApplyNoiseInput",
+      "command": "apply_noise",
+      "kind": "object",
+      "description": "Add noise/grain to a layer.\n\nParameters:\n- amount: Noise intensity 0.0-1.0 (default 0.2)\n- layer_name: Target layer; defaults to active layer\n- image_index: Target image index (default 0)\n\nReturns status dict.",
+      "params": [
+        {
+          "name": "amount",
+          "field": "Amount",
+          "goType": "*float64",
+          "description": "Noise intensity 0.0-1.0 (default 0.2)",
+          "default": "ptr(0.2)",
+          "required": false
+        },
+        {
+          "name": "layer_name",
+          "field": "LayerName",
+          "goType": "*string",
+          "description": "Target layer; defaults to active layer",
+          "default": "",
+          "required": false
+        },
+        {
+          "name": "image_index",
+          "field": "ImageIndex",
+          "goType": "int",
+          "description": "Target image index (default 0)",
+          "default": "",
+          "required": false
+        }
+      ]
+    },
+    {
+      "name": "export_icon_sizes",
+      "struct": "ExportIconSizesInput",
+      "command": "export_icon_sizes",
+      "kind": "object",
+      "description": "Export an image as a complete icon set for Android or iOS.\n\nAndroid sizes: 48 (mdpi), 72 (hdpi), 96 (xhdpi), 144 (xxhdpi),\n               192 (xxxhdpi), 512 (Play Store)\niOS sizes: 20x1/2/3, 29x1/2/3, 40x2/3, 60x2/3, 76x1/2, 83.5x2, 1024x1\n\nParameters:\n- output_dir: Directory to write icon files into\n- platform: \"android\" (default) or \"ios\"\n- source_image_index: Image to use as source (default 0)\n- format: Output format — \"png\" (default)\n\nReturns: {exported: [{size, file_path}], count, platform}",
+      "params": [
+        {
+          "name": "output_dir",
+          "field": "OutputDir",
+          "goType": "string",
+          "description": "Directory to write icon files into",
+          "default": "",
+          "required": true
+        },
+        {
+          "name": "platform",
+          "field": "Platform",
+          "goType": "*string",
+          "description": "\"android\" (default) or \"ios\"",
+          "default": "ptr(\"android\")",
+          "required": false
+        },
+        {
+          "name": "source_image_index",
+          "field": "SourceImageIndex",
+          "goType": "int",
+          "description": "Image to use as source (default 0)",
+          "default": "",
+          "required": false
+        },
+        {
+          "name": "format",
+          "field": "Format",
+          "goType": "*string",
+          "description": "Output format — \"png\" (default)",
+          "default": "ptr(\"png\")",
+          "required": false
+        }
+      ]
+    },
+    {
+      "name": "export_web_optimized",
+      "struct": "ExportWebOptimizedInput",
+      "command": "export_web_optimized",
+      "kind": "object",
+      "description": "Export an image as both JPEG and PNG, choosing the smaller format.\n\nParameters:\n- output_dir: Directory to write output files\n- jpeg_quality: JPEG quality 1-100 (default 85)\n- png_compression: PNG compression level 0-9 (default 9)\n- max_width / max_height: Optional scaling before export\n- image_index: Source image index (default 0)\n\nReturns: {jpeg_path, jpeg_size, png_path, png_size, recommendation}",
+      "params": [
+        {
+          "name": "output_dir",
+          "field": "OutputDir",
+          "goType": "string",
+          "description": "Directory to write output files",
+          "default": "",
+          "required": true
+        },
+        {
+          "name": "jpeg_quality",
+          "field": "JPEGQuality",
+          "goType": "*int",
+          "description": "JPEG quality 1-100 (default 85)",
+          "default": "ptr(85)",
+          "required": false
+        },
+        {
+          "name": "png_compression",
+          "field": "PNGCompression",
+          "goType": "*int",
+          "description": "PNG compression level 0-9 (default 9)",
+          "default": "ptr(9)",
+          "required": false
+        },
+        {
+          "name": "max_width",
+          "field": "MaxWidth",
+          "goType": "*int",
+          "description": "Optional scaling before export",
+          "default": "",
+          "required": false
+        },
+        {
+          "name": "max_height",
+          "field": "MaxHeight",
+          "goType": "*int",
+          "description": "Optional scaling before export",
+          "default": "",
+          "required": false
+        },
+        {
+          "name": "image_index",
+          "field": "ImageIndex",
+          "goType": "int",
+          "description": "Source image index (default 0)",
+          "default": "",
+          "required": false
+        }
+      ]
+    },
+    {
+      "name": "warp_region",
+      "struct": "WarpRegionInput",
+      "command": "warp_region",
+      "kind": "object",
+      "description": "Warp / liquify a region of the image by pushing pixels in a direction.\n\nUses GEGL warp (GIMP 3 native) with plug-in-iwarp fallback. Ideal for\nsubtle facial expression edits — e.g. turning a neutral mouth into a smile\nby pushing the mouth corners upward.\n\nParameters:\n- vectors: List of warp stroke dicts, each with:\n    - x, y      : center of the warp influence (pixels)\n    - dx, dy    : push direction — negative dy = push upward\n    - radius    : influence radius in pixels (default: 40)\n    - amount    : deform strength 0–1 (default: 0.3)\n- image_index: Which open image to edit (default: 0)\n- layer_name: Target layer; omit to use the active/top layer\n\nExamples — make a character smile:\n    warp_region(vectors=[\n        {\"x\": 215, \"y\": 355, \"dx\":  5, \"dy\": -8, \"radius\": 18, \"amount\": 0.45},\n        {\"x\": 295, \"y\": 355, \"dx\": -5, \"dy\": -8, \"radius\": 18, \"amount\": 0.45},\n        {\"x\": 255, \"y\": 370, \"dx\":  0, \"dy\": -4, \"radius\": 22, \"amount\": 0.30},\n    ])\n\nReturns: {\"warped_vectors\": N}",
+      "params": [
+        {
+          "name": "vectors",
+          "field": "Vectors",
+          "goType": "[]any",
+          "description": "List of warp stroke dicts, each with: - x, y      : center of the warp influence (pixels) - dx, dy    : push direction — negative dy = push upward - radius    : influence radius in pixels (default: 40) - amount    : deform strength 0–1 (default: 0.3)",
+          "default": "",
+          "required": true
+        },
+        {
+          "name": "image_index",
+          "field": "ImageIndex",
+          "goType": "int",
+          "description": "Which open image to edit (default: 0)",
+          "default": "",
+          "required": false
+        },
+        {
+          "name": "layer_name",
+          "field": "LayerName",
+          "goType": "*string",
+          "description": "Target layer; omit to use the active/top layer",
+          "default": "",
+          "required": false
+        }
+      ]
+    },
+    {
+      "name": "batch_resize",
+      "struct": "BatchResizeInput",
+      "command": "batch_resize",
+      "kind": "object",
+      "description": "Resize all open images to a common target size.\n\nParameters:\n- width / height: Target dimensions in pixels (provide one or both)\n- scale_factor: Proportional scale (e.g. 0.5 = 50%); overrides width/height if set\n- maintain_aspect: Preserve aspect ratio when only one dimension is given (default True)\n\nReturns: {results: [{image_id, old_width, old_height, new_width, new_height}], count}",
+      "params": [
+        {
+          "name": "width",
+          "field": "Width",
+          "goType": "*int",
+          "description": "Target dimensions in pixels (provide one or both)",
+          "default": "",
+          "required": false
+        },
+        {
+          "name": "height",
+          "field": "Height",
+          "goType": "*int",
+          "description": "Target dimensions in pixels (provide one or both)",
+          "default": "",
+          "required": false
+        },
+        {
+          "name": "scale_factor",
+          "field": "ScaleFactor",
+          "goType": "*float64",
+          "description": "Proportional scale (e.g. 0.5 = 50%); overrides width/height if set",
+          "default": "",
+          "required": false
+        },
+        {
+          "name": "maintain_aspect",
+          "field": "MaintainAspect",
+          "goType": "*bool",
+          "description": "Preserve aspect ratio when only one dimension is given (default True)",
+          "default": "ptr(true)",
+          "required": false
+        }
+      ]
+    },
+    {
+      "name": "export_sprite_sheet",
+      "struct": "ExportSpriteSheetInput",
+      "command": "export_sprite_sheet",
+      "kind": "object",
+      "description": "Combine multiple frames into a sprite sheet PNG.\n\nParameters:\n- output_path: Absolute path for the output PNG file\n- columns: Number of columns in the grid (defaults to square root of frame count)\n- padding: Pixel gap between frames (default 0)\n- source: \"layers\" (each layer is a frame; default) or \"images\" (each open image)\n- image_index: Source image when source=\"layers\" (default 0)\n\nReturns: {file_path, columns, rows, frame_width, frame_height, count}",
+      "params": [
+        {
+          "name": "output_path",
+          "field": "OutputPath",
+          "goType": "string",
+          "description": "Absolute path for the output PNG file",
+          "default": "",
+          "required": true
+        },
+        {
+          "name": "columns",
+          "field": "Columns",
+          "goType": "*int",
+          "description": "Number of columns in the grid (defaults to square root of frame count)",
+          "default": "",
+          "required": false
+        },
+        {
+          "name": "padding",
+          "field": "Padding",
+          "goType": "int",
+          "description": "Pixel gap between frames (default 0)",
+          "default": "",
+          "required": false
+        },
+        {
+          "name": "source",
+          "field": "Source",
+          "goType": "*string",
+          "description": "\"layers\" (each layer is a frame; default) or \"images\" (each open image)",
+          "default": "ptr(\"layers\")",
+          "required": false
+        },
+        {
+          "name": "image_index",
+          "field": "ImageIndex",
+          "goType": "int",
+          "description": "Source image when source=\"layers\" (default 0)",
+          "default": "",
+          "required": false
+        }
+      ]
+    },
+    {
+      "name": "export_social_media_kit",
+      "struct": "ExportSocialMediaKitInput",
+      "command": "export_social_media_kit",
+      "kind": "object",
+      "description": "Export an image resized for multiple social media platforms.\n\nPlatform sizes (all in pixels):\n- instagram_square: 1080x1080\n- instagram_story: 1080x1920\n- twitter_header: 1500x500\n- facebook_cover: 820x312\n- youtube_thumbnail: 1280x720\n\nParameters:\n- output_dir: Directory to write output files\n- platforms: List of platform names to export (omit for all five)\n- image_index: Source image index (default 0)\n\nReturns: {exported: [{platform, file_path, width, height}], count}",
+      "params": [
+        {
+          "name": "output_dir",
+          "field": "OutputDir",
+          "goType": "string",
+          "description": "Directory to write output files",
+          "default": "",
+          "required": true
+        },
+        {
+          "name": "platforms",
+          "field": "Platforms",
+          "goType": "[]any",
+          "description": "List of platform names to export (omit for all five)",
+          "default": "",
+          "required": false
+        },
+        {
+          "name": "image_index",
+          "field": "ImageIndex",
+          "goType": "int",
+          "description": "Source image index (default 0)",
+          "default": "",
+          "required": false
+        }
+      ]
+    },
+    {
+      "name": "list_images",
+      "struct": "ListImagesInput",
+      "command": "list_images",
+      "kind": "object",
+      "description": "List all images currently open in GIMP.\n\nReturns:\n- images: list of {index, image_id, name, width, height, color_mode,\n                   num_layers, file_path, is_dirty}\n- count: total number of open images",
+      "params": []
+    },
+    {
+      "name": "set_active_image",
+      "struct": "SetActiveImageInput",
+      "command": "set_active_image",
+      "kind": "object",
+      "description": "Raise a specific image to the front / make it active in GIMP.\n\nParameters:\n- image_index: Index of the image to activate (from list_images)\n\nReturns status dict.",
+      "params": [
+        {
+          "name": "image_index",
+          "field": "ImageIndex",
+          "goType": "int",
+          "description": "Index of the image to activate (from list_images)",
+          "default": "",
+          "required": true
+        }
+      ]
+    },
+    {
+      "name": "undo",
+      "struct": "UndoInput",
+      "command": "undo",
+      "kind": "object",
+      "description": "Undo one or more operations on an image.\n\nParameters:\n- steps: Number of undo steps (default 1)\n- image_index: Target image index (default 0)\n\nReturns: {steps_undone}\n\nNot available on GIMP 3: the PDB procedures that step the undo stack were removed, so this call always fails. Re-open the image or apply the inverse operation instead.",
+      "params": [
+        {
+          "name": "steps",
+          "field": "Steps",
+          "goType": "*int",
+          "description": "Number of undo steps (default 1)",
+          "default": "ptr(1)",
+          "required": false
+        },
+        {
+          "name": "image_index",
+          "field": "ImageIndex",
+          "goType": "int",
+          "description": "Target image index (default 0)",
+          "default": "",
+          "required": false
+        }
+      ]
+    },
+    {
+      "name": "redo",
+      "struct": "RedoInput",
+      "command": "redo",
+      "kind": "object",
+      "description": "Redo one or more previously undone operations on an image.\n\nParameters:\n- steps: Number of redo steps (default 1)\n- image_index: Target image index (default 0)\n\nReturns: {steps_redone}\n\nNot available on GIMP 3: the PDB procedures that step the undo stack were removed, so this call always fails. Re-open the image or apply the inverse operation instead.",
+      "params": [
+        {
+          "name": "steps",
+          "field": "Steps",
+          "goType": "*int",
+          "description": "Number of redo steps (default 1)",
+          "default": "ptr(1)",
+          "required": false
+        },
+        {
+          "name": "image_index",
+          "field": "ImageIndex",
+          "goType": "int",
+          "description": "Target image index (default 0)",
+          "default": "",
+          "required": false
+        }
+      ]
+    },
+    {
+      "name": "convert_color_mode",
+      "struct": "ConvertColorModeInput",
+      "command": "convert_color_mode",
+      "kind": "object",
+      "description": "Convert an image to a different color mode.\n\nParameters:\n- mode: \"RGB\", \"GRAY\", or \"INDEXED\"\n- num_colors: Number of colors for INDEXED mode (default 256)\n- image_index: Target image index (default 0)\n\nReturns status dict.",
+      "params": [
+        {
+          "name": "mode",
+          "field": "Mode",
+          "goType": "string",
+          "description": "\"RGB\", \"GRAY\", or \"INDEXED\"",
+          "default": "",
+          "required": true
+        },
+        {
+          "name": "num_colors",
+          "field": "NumColors",
+          "goType": "*int",
+          "description": "Number of colors for INDEXED mode (default 256)",
+          "default": "ptr(256)",
+          "required": false
+        },
+        {
+          "name": "image_index",
+          "field": "ImageIndex",
+          "goType": "int",
+          "description": "Target image index (default 0)",
+          "default": "",
+          "required": false
+        }
+      ]
+    },
+    {
+      "name": "close_image",
+      "struct": "CloseImageInput",
+      "command": "close_image",
+      "kind": "object",
+      "description": "Close an image, optionally saving as XCF first.\n\nParameters:\n- image_index: Index of the image to close (default 0)\n- save_first: If True, save as XCF before closing (default False)\n- force: If True, close even with unsaved changes, discarding them (default False)\n\nReturns status dict.",
+      "params": [
+        {
+          "name": "image_index",
+          "field": "ImageIndex",
+          "goType": "int",
+          "description": "Index of the image to close (default 0)",
+          "default": "",
+          "required": false
+        },
+        {
+          "name": "save_first",
+          "field": "SaveFirst",
+          "goType": "bool",
+          "description": "If True, save as XCF before closing (default False)",
+          "default": "",
+          "required": false
+        },
+        {
+          "name": "force",
+          "field": "Force",
+          "goType": "bool",
+          "description": "Close even with unsaved changes, discarding them (default False)",
+          "default": "",
+          "required": false
+        }
+      ]
+    },
+    {
+      "name": "get_selection_bounds",
+      "struct": "GetSelectionBoundsInput",
+      "command": "get_selection_bounds",
+      "kind": "object",
+      "description": "Get the bounding rectangle of the current selection.\n\nParameters:\n- image_index: Target image index (default 0)\n\nReturns: {has_selection, x, y, width, height}",
+      "params": [
+        {
+          "name": "image_index",
+          "field": "ImageIndex",
+          "goType": "int",
+          "description": "Target image index (default 0)",
+          "default": "",
+          "required": false
+        }
+      ]
+    },
+    {
+      "name": "get_pixel_color",
+      "struct": "GetPixelColorInput",
+      "command": "get_pixel_color",
+      "kind": "object",
+      "description": "Get the color of a single pixel.\n\nParameters:\n- x, y: Pixel coordinates\n- image_index: Target image index (default 0)\n- layer_name: Layer to sample from; defaults to active layer\n\nReturns: {color_hex, color_rgb: [r, g, b], alpha}",
+      "params": [
+        {
+          "name": "x",
+          "field": "X",
+          "goType": "int",
+          "description": "Pixel coordinates",
+          "default": "",
+          "required": true
+        },
+        {
+          "name": "y",
+          "field": "Y",
+          "goType": "int",
+          "description": "Pixel coordinates",
+          "default": "",
+          "required": true
+        },
+        {
+          "name": "image_index",
+          "field": "ImageIndex",
+          "goType": "int",
+          "description": "Target image index (default 0)",
+          "default": "",
+          "required": false
+        },
+        {
+          "name": "layer_name",
+          "field": "LayerName",
+          "goType": "*string",
+          "description": "Layer to sample from; defaults to active layer",
+          "default": "",
+          "required": false
+        }
+      ]
+    },
+    {
+      "name": "get_histogram",
+      "struct": "GetHistogramInput",
+      "command": "get_histogram",
+      "kind": "object",
+      "description": "Get histogram statistics for a channel of the active layer.\n\nParameters:\n- channel: \"value\" (all; default), \"red\", \"green\", \"blue\", \"alpha\"\n- image_index: Target image index (default 0)\n\nReturns: {mean, median, std_dev, min, max, pixels, count}",
+      "params": [
+        {
+          "name": "channel",
+          "field": "Channel",
+          "goType": "*string",
+          "description": "\"value\" (all; default), \"red\", \"green\", \"blue\", \"alpha\"",
+          "default": "ptr(\"value\")",
+          "required": false
+        },
+        {
+          "name": "image_index",
+          "field": "ImageIndex",
+          "goType": "int",
+          "description": "Target image index (default 0)",
+          "default": "",
+          "required": false
+        }
+      ]
+    }
+  ]
+}

@@ -1,0 +1,59 @@
+version: 2
+
+project_name: mcp-gimp
+
+builds:
+  - id: mcp-gimp
+    main: ./cmd/mcp-gimp
+    binary: mcp-gimp
+    env:
+      # The MCP server talks to the plug-in over TCP and links nothing from
+      # GIMP, so it stays a static, cross-compiled binary. The plug-in is a
+      # separate cgo artifact; see plugin/.goreleaser.yml.
+      - CGO_ENABLED=0
+    goos: [linux, darwin, windows]
+    goarch: [amd64, arm64]
+    ldflags:
+      - -s -w -X main.version={{ .Version }}
+
+archives:
+  - name_template: >-
+      {{ .ProjectName }}_
+      {{- title .Os }}_
+      {{- if eq .Arch "amd64" }}x86_64
+      {{- else if eq .Arch "386" }}i386
+      {{- else }}{{ .Arch }}{{ end }}
+    wrap_in_directory: true
+    files:
+      - README.md
+      - LICENSE
+    format_overrides:
+      - goos: windows
+        formats: ["zip"]
+      - goos: darwin
+        formats: ["tar.xz"]
+      - goos: linux
+        formats: ["tar.xz"]
+
+checksum:
+  name_template: "checksums.txt"
+
+dockers_v2:
+  - dockerfile: Dockerfile
+    images:
+      - ryancurrah/mcp-gimp
+    tags:
+      - "latest"
+      - "{{ .Version }}"
+    platforms:
+      - linux/amd64
+      - linux/arm64
+    flags:
+      - --pull
+    labels:
+      "org.opencontainers.image.created": "{{ .Date }}"
+      "org.opencontainers.image.name": "{{ .ProjectName }}"
+      "org.opencontainers.image.revision": "{{ .FullCommit }}"
+      "org.opencontainers.image.version": "{{ .Version }}"
+      "org.opencontainers.image.source": "{{ .GitURL }}"
+      "org.opencontainers.image.description": "MCP server for GIMP 3"

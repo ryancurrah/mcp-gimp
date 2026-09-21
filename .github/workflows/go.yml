@@ -1,0 +1,63 @@
+name: Go
+
+on:
+  pull_request:
+  push:
+    branches: [main]
+
+permissions:
+  contents: read
+
+jobs:
+  server:
+    name: MCP server
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v5
+
+      - uses: actions/setup-go@v6
+        with:
+          go-version: stable
+
+      - name: Build
+        run: go build ./...
+
+      - name: Test
+        run: go test -race -coverprofile coverage.out ./...
+
+      - name: golangci-lint
+        uses: golangci/golangci-lint-action@v9
+
+      - name: Cover
+        run: make install-go-tools cover
+
+      - name: Upload coverage to Codecov
+        uses: codecov/codecov-action@v5
+        with:
+          files: ./coverage.xml
+          flags: unittests
+          name: codecov-umbrella
+          fail_ci_if_error: false
+
+  plugin:
+    name: GIMP plug-in
+    runs-on: ubuntu-latest
+    # The plug-in links libgimp, so it builds where GIMP 3 development files
+    # are packaged.
+    container: debian:trixie
+    steps:
+      - name: Install build dependencies
+        run: |
+          apt-get update
+          apt-get install -y --no-install-recommends \
+            ca-certificates git gcc pkg-config libgimp-3.0-dev golang-go
+
+      - uses: actions/checkout@v5
+
+      - name: Build plug-in
+        working-directory: plugin
+        run: go build -o ../gimp-mcp-plugin .
+
+      - name: Test
+        working-directory: plugin
+        run: go test ./...

@@ -1,0 +1,137 @@
+name: Release
+
+on:
+  push:
+    tags: ["v*"]
+
+permissions:
+  contents: write
+
+jobs:
+  server:
+    name: Server archives and image
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v5
+        with:
+          fetch-depth: 0
+
+      - uses: actions/setup-go@v6
+        with:
+          go-version: stable
+
+      - name: Set up QEMU
+        uses: docker/setup-qemu-action@v3
+
+      - name: Set up Docker Buildx
+        uses: docker/setup-buildx-action@v3
+
+      - name: Login to Docker Hub
+        uses: docker/login-action@v3
+        with:
+          username: ${{ secrets.DOCKERHUB_USERNAME }}
+          password: ${{ secrets.DOCKERHUB_TOKEN }}
+
+      - name: Run GoReleaser
+        uses: goreleaser/goreleaser-action@v6
+        with:
+          version: "~> v2"
+          args: release --clean
+        env:
+          GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
+
+  # The plug-in links libgimp through cgo and cannot be cross-compiled, so
+  # each target builds on its own runner with GIMP's development files
+  # installed, and appends its archive to the release the server job created.
+  plugin:
+    name: Plug-in ${{ matrix.target }}
+    needs: server
+    strategy:
+      fail-fast: false
+      matrix:
+        include:
+          - target: linux_amd64
+            runs-on: ubuntu-latest
+            container: debian:trixie
+          - target: linux_arm64
+            runs-on: ubuntu-24.04-arm
+            container: debian:trixie
+          - target: darwin_amd64
+            runs-on: macos-13
+          - target: darwin_arm64
+            runs-on: macos-14
+          - target: windows_amd64
+            runs-on: windows-latest
+    runs-on: ${{ matrix.runs-on }}
+    container: ${{ matrix.container }}
+    defaults:
+      run:
+        shell: ${{ startsWith(matrix.target, 'windows') && 'msys2 {0}' || 'bash' }}
+    steps:
+      # The container starts bare, and actions/checkout needs git present.
+      - name: Install build dependencies (Linux)
+        if: startsWith(matrix.target, 'linux')
+        run: |
+          apt-get update
+          apt-get install -y --no-install-recommends \
+            ca-certificates curl git gcc pkg-config libgimp-3.0-dev
+
+      # MSYS2 supplies GIMP 3's headers and import libraries on Windows;
+      # UCRT64 is the GCC environment cgo needs.
+      - name: Set up MSYS2 (Windows)
+        if: startsWith(matrix.target, 'windows')
+        uses: msys2/setup-msys2@v2
+        with:
+          msystem: UCRT64
+          update: true
+          install: >-
+            git
+            mingw-w64-ucrt-x86_64-gcc
+            mingw-w64-ucrt-x86_64-pkgconf
+            mingw-w64-ucrt-x86_64-gimp
+
+      - name: Install GIMP (macOS)
+        if: startsWith(matrix.target, 'darwin')
+        run: brew install --cask gimp
+
+      - uses: actions/checkout@v5
+        with:
+          fetch-depth: 0
+
+      - uses: actions/setup-go@v6
+        with:
+          go-version: stable
+          cache-dependency-path: plugin/go.sum
+
+      - name: Configure the build for this platform
+        run: |
+          case "${{ matrix.target }}" in
+            darwin_*)
+              # GIMP.app ships its own headers and libraries, and does not put
+              # them on the loader path for plug-ins, so the location is baked
+              # in as an rpath.
+              prefix=/Applications/GIMP.app/Contents
+              echo "PKG_CONFIG_PATH=$prefix/lib/pkgconfig" >> "$GITHUB_ENV"
+              echo "CGO_LDFLAGS=-Wl,-rpath,$prefix/lib" >> "$GITHUB_ENV"
+              ;;
+            windows_*)
+              # MSYS2 installs into the UCRT64 prefix, already on the default
+              # pkg-config path.
+              echo "PKG_CONFIG=$(which pkgconf)" >> "$GITHUB_ENV"
+              ;;
+          esac
+
+      - name: Verify libgimp is discoverable
+        run: |
+          pkg-config --modversion gimp-3.0
+          pkg-config --cflags gimp-3.0
+
+      - name: Run GoReleaser
+        uses: goreleaser/goreleaser-action@v6
+        with:
+          version: "~> v2"
+          args: release -f .goreleaser.plugin.yml --clean
+        env:
+          GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
+          PLUGIN_TARGET: ${{ matrix.target }}
+          CGO_ENABLED: "1"

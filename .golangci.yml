@@ -1,0 +1,56 @@
+version: "2"
+
+linters:
+  default: all
+  disable:
+    - lll
+    - gomodguard
+    - gomoddirectives
+    - gochecknoglobals
+    - paralleltest
+    - varnamelen
+    - exhaustruct
+    - exhaustruct_v5
+    - depguard
+    - forbidigo
+    - funlen
+    - nlreturn
+    - nonamedreturns
+    - cyclop
+    - err113
+    - perfsprint
+    - tagliatelle
+    - wrapcheck
+    - mnd
+    - wsl
+    - wsl_v5
+    - noinlineerr
+  settings:
+    revive:
+      rules:
+        - name: package-comments
+          disabled: true
+    ireturn:
+      # The PDB is dynamically typed, so the bridge carries GIMP values as
+      # gimpbridge.Value. Listing it here keeps the default allowances too,
+      # since this setting replaces them rather than adding to them.
+      allow:
+        - anon
+        - error
+        - empty
+        - stdlib
+        - gimpbridge\.Value
+  exclusions:
+    rules:
+      - path: _test\.go$
+        linters:
+          - goconst
+          # The command tests exercise unexported helpers such as alignOffset,
+          # which an external test package cannot reach.
+          - testpackage
+      # PDB argument names are the wire contract with GIMP. Args{"image": id}
+      # matches the procedure reference and reads better than a constant, so
+      # the repetition goconst sees is deliberate.
+      - path: internal/commands/
+        linters:
+          - goconst
