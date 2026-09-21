@@ -57,9 +57,9 @@ jobs:
             runs-on: ubuntu-24.04-arm
             container: debian:trixie
           - target: darwin_amd64
-            runs-on: macos-13
+            runs-on: macos-15-intel
           - target: darwin_arm64
-            runs-on: macos-14
+            runs-on: macos-15
           - target: windows_amd64
             runs-on: windows-latest
     runs-on: ${{ matrix.runs-on }}
@@ -92,7 +92,11 @@ jobs:
 
       - name: Install GIMP (macOS)
         if: startsWith(matrix.target, 'darwin')
-        run: brew install --cask gimp
+        # The image's tap snapshot can predate the GIMP that bundles the
+        # pkg-config files the build needs, so refresh it first.
+        run: |
+          brew update
+          brew install --cask gimp
 
       - uses: actions/checkout@v5
         with:
@@ -114,15 +118,23 @@ jobs:
             darwin_*)
               # GIMP.app ships its own headers and libraries, and does not put
               # them on the loader path for plug-ins, so the location is baked
-              # in as an rpath.
-              prefix=/Applications/GIMP.app/Contents
-              echo "PKG_CONFIG_PATH=$prefix/lib/pkgconfig" >> "$GITHUB_ENV"
-              echo "CGO_LDFLAGS=-Wl,-rpath,$prefix/lib" >> "$GITHUB_ENV"
+              # in as an rpath. The layout has moved between releases, so find
+              # the file rather than assuming where it lives.
+              pc=$(find /Applications/GIMP.app -name gimp-3.0.pc -print -quit)
+              if [ -z "$pc" ]; then
+                echo "::error::gimp-3.0.pc not found in GIMP.app"
+                find /Applications/GIMP.app -maxdepth 3 -type d
+                exit 1
+              fi
+              libdir=$(dirname "$(dirname "$pc")")
+              echo "PKG_CONFIG_PATH=$(dirname "$pc")" >> "$GITHUB_ENV"
+              echo "CGO_LDFLAGS=-Wl,-rpath,$libdir" >> "$GITHUB_ENV"
               ;;
             windows_*)
               # MSYS2 installs into the UCRT64 prefix, already on the default
-              # pkg-config path.
-              echo "PKG_CONFIG=$(which pkgconf)" >> "$GITHUB_ENV"
+              # pkg-config path. Go is a native Windows binary and cannot exec
+              # an MSYS path, so hand it the Windows form.
+              echo "PKG_CONFIG=$(cygpath -w "$(which pkgconf)")" >> "$GITHUB_ENV"
               ;;
           esac
 
