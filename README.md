@@ -28,7 +28,30 @@ client spawns the server, and GIMP loads the plug-in.
 
 ## Install
 
-### The plug-in
+### Homebrew
+
+```bash
+brew tap ryancurrah/tap
+
+brew install --cask mcp-gimp          # the server
+brew install --cask gimp-mcp-plugin   # the plug-in (macOS only)
+```
+
+Restart GIMP, then run **Tools > MCP > Start MCP Server**.
+
+The plug-in cask symlinks the executable into GIMP's per-user plug-ins
+directory. That directory is named after GIMP's major.minor version, so it
+**moves when GIMP is upgraded** and the link has to be remade:
+
+```bash
+brew reinstall --cask gimp-mcp-plugin
+```
+
+The plug-in cask is macOS-only — Homebrew has no libgimp to build against, so
+it can only ship the prebuilt binary, which is linked against
+`/Applications/GIMP.app`. On Linux and Windows, install the plug-in by hand.
+
+### The plug-in, by hand
 
 Download the archive for your platform from the
 [releases page](../../releases):
@@ -72,13 +95,14 @@ the machine that runs GIMP:
 make install-plugin
 ```
 
-### The server
+### The server, by hand
 
 ```bash
 go install github.com/ryancurrah/mcp-gimp/cmd/mcp-gimp@latest
 ```
 
-or take an archive from the [releases page](../../releases).
+or take an archive from the [releases page](../../releases), or run the
+[Docker image](#docker).
 
 ## Configure your client
 
@@ -195,8 +219,8 @@ those exact keys.
 
 ### Releasing
 
-Pushing a `v*` tag runs two jobs. The server is cross-compiled and released
-normally. The plug-in cannot be: cgo against libgimp has to build on the
+Pushing a `v*` tag runs three jobs. The server is cross-compiled and released
+normally, and GoReleaser generates its Homebrew cask from the same archives. The plug-in cannot be: cgo against libgimp has to build on the
 target platform, so a matrix of five runners each build one target and append
 their archive to the same release, selected by `PLUGIN_TARGET` against
 [`.goreleaser.plugin.yml`](.goreleaser.plugin.yml).
@@ -205,13 +229,24 @@ their archive to the same release, selected by `PLUGIN_TARGET` against
 | --- | --- | --- |
 | `linux_amd64` | `ubuntu-latest` + `debian:trixie` | `libgimp-3.0-dev` |
 | `linux_arm64` | `ubuntu-24.04-arm` + `debian:trixie` | `libgimp-3.0-dev` |
-| `darwin_amd64` | `macos-13` | GIMP.app (Homebrew cask) |
-| `darwin_arm64` | `macos-14` | GIMP.app (Homebrew cask) |
+| `darwin_amd64` | `macos-15-intel` | GIMP.app (Homebrew cask) |
+| `darwin_arm64` | `macos-15` | GIMP.app (Homebrew cask) |
 | `windows_amd64` | `windows-latest` | MSYS2 UCRT64 |
 
 Reproduce any one locally with
 `PLUGIN_TARGET=<target> make plugin-snapshot` (the target must match the
 host).
+
+A third job then renders the plug-in's cask. GoReleaser cannot: each plug-in
+target releases from its own runner, so no single run holds both macOS
+archives, and a cask needs both checksums at once. The job waits for the
+matrix, reads the checksums off the finished release and fills in
+[`packaging/gimp-mcp-plugin.rb.tmpl`](packaging/gimp-mcp-plugin.rb.tmpl).
+
+Both casks are pushed to [ryancurrah/homebrew-tap](https://github.com/ryancurrah/homebrew-tap),
+which needs `HOMEBREW_TAP_TOKEN` in this repository's Actions secrets — a PAT
+with `contents: write` on the tap. The job's own `GITHUB_TOKEN` cannot write to
+another repository. Prereleases (a `-` in the tag) are skipped.
 
 ### How the plug-in reaches GIMP
 

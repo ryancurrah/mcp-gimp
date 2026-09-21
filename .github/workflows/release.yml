@@ -33,12 +33,15 @@ jobs:
           password: ${{ secrets.DOCKERHUB_TOKEN }}
 
       - name: Run GoReleaser
-        uses: goreleaser/goreleaser-action@v6
+        uses: goreleaser/goreleaser-action@v7
         with:
           version: "~> v2"
           args: release --clean
         env:
           GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
+          # Pushing the cask means writing to a second repository, which
+          # the job's own GITHUB_TOKEN cannot do.
+          HOMEBREW_TAP_TOKEN: ${{ secrets.HOMEBREW_TAP_TOKEN }}
 
   # The plug-in links libgimp through cgo and cannot be cross-compiled, so
   # each target builds on its own runner with GIMP's development files
@@ -188,7 +191,7 @@ jobs:
           "${CC:-gcc}" -dumpmachine
 
       - name: Run GoReleaser
-        uses: goreleaser/goreleaser-action@v6
+        uses: goreleaser/goreleaser-action@v7
         with:
           version: "~> v2"
           args: release -f .goreleaser.plugin.yml --clean
@@ -196,3 +199,53 @@ jobs:
           GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
           PLUGIN_TARGET: ${{ matrix.target }}
           CGO_ENABLED: "1"
+
+  # Each plug-in target releases from its own runner, so no single GoReleaser
+  # run ever holds both macOS archives, and a cask needs both checksums at
+  # once. It is rendered here instead, after every target has uploaded.
+  cask:
+    name: Plug-in cask
+    needs: plugin
+    runs-on: ubuntu-latest
+    # Matches skip_upload: auto on the server cask: prereleases stay out of
+    # the tap.
+    if: ${{ !contains(github.ref_name, '-') }}
+    steps:
+      - uses: actions/checkout@v5
+
+      - name: Render the cask
+        env:
+          GH_TOKEN: ${{ secrets.GITHUB_TOKEN }}
+        run: |
+          set -euo pipefail
+          gh release download "$GITHUB_REF_NAME" --repo "$GITHUB_REPOSITORY" \
+            --dir dl --pattern 'gimp-mcp-plugin_Darwin_*.tar.gz'
+          arm=$(sha256sum dl/gimp-mcp-plugin_Darwin_arm64.tar.gz | cut -d' ' -f1)
+          intel=$(sha256sum dl/gimp-mcp-plugin_Darwin_x86_64.tar.gz | cut -d' ' -f1)
+          sed -e "s|@VERSION@|${GITHUB_REF_NAME#v}|" \
+              -e "s|@ARM_SHA256@|$arm|" \
+              -e "s|@INTEL_SHA256@|$intel|" \
+              packaging/gimp-mcp-plugin.rb.tmpl > gimp-mcp-plugin.rb
+          if grep -q '@[A-Z][A-Z0-9_]*@' gimp-mcp-plugin.rb; then
+            echo "::error::unsubstituted placeholder in the cask"
+            exit 1
+          fi
+          cat gimp-mcp-plugin.rb
+
+      - name: Check it parses
+        run: ruby -c gimp-mcp-plugin.rb
+
+      - name: Push it to the tap
+        env:
+          GH_TOKEN: ${{ secrets.HOMEBREW_TAP_TOKEN }}
+        run: |
+          set -euo pipefail
+          git clone --depth 1 \
+            "https://x-access-token:${GH_TOKEN}@github.com/ryancurrah/homebrew-tap.git" tap
+          cp gimp-mcp-plugin.rb tap/Casks/
+          cd tap
+          git config user.name "goreleaser-bot"
+          git config user.email "bot@goreleaser.com"
+          git add Casks/gimp-mcp-plugin.rb
+          git diff --quiet --cached || git commit -m "gimp-mcp-plugin: $GITHUB_REF_NAME"
+          git push
