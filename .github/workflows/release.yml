@@ -133,8 +133,16 @@ jobs:
             windows_*)
               # MSYS2 installs into the UCRT64 prefix, already on the default
               # pkg-config path. Go is a native Windows binary and cannot exec
-              # an MSYS path, so hand it the Windows form.
-              echo "PKG_CONFIG=$(cygpath -w "$(which pkgconf)")" >> "$GITHUB_ENV"
+              # an MSYS path, so hand it the Windows form. cygpath drops the
+              # extension, and cgo execs PKG_CONFIG verbatim without trying
+              # PATHEXT, so name the .exe outright.
+              pkgconf=$(cygpath -w "$(command -v pkgconf)")
+              case "$pkgconf" in *.exe) ;; *) pkgconf="$pkgconf.exe" ;; esac
+              if [ ! -x "$(cygpath -u "$pkgconf")" ]; then
+                echo "::error::pkgconf not found at $pkgconf"
+                exit 1
+              fi
+              echo "PKG_CONFIG=$pkgconf" >> "$GITHUB_ENV"
               ;;
           esac
 
