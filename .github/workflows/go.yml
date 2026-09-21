@@ -13,7 +13,7 @@ jobs:
     name: MCP server
     runs-on: ubuntu-latest
     steps:
-      - uses: actions/checkout@v5
+      - uses: actions/checkout@v7
 
       - uses: actions/setup-go@v7
         with:
@@ -56,7 +56,7 @@ jobs:
           apt-get install -y --no-install-recommends \
             ca-certificates git gcc pkg-config libgimp-3.0-dev golang-go
 
-      - uses: actions/checkout@v5
+      - uses: actions/checkout@v7
 
       # actions/checkout adds the safe.directory entry under a temporary HOME,
       # so git in later steps still sees the workspace as owned by another user.
