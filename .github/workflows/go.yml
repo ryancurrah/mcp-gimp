@@ -54,6 +54,11 @@ jobs:
 
       - uses: actions/checkout@v5
 
+      # actions/checkout adds the safe.directory entry under a temporary HOME,
+      # so git in later steps still sees the workspace as owned by another user.
+      - name: Trust the workspace
+        run: git config --global --add safe.directory "$GITHUB_WORKSPACE"
+
       - name: Build plug-in
         working-directory: plugin
         run: go build -o ../gimp-mcp-plugin .

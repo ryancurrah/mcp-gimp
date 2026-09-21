@@ -98,6 +98,11 @@ jobs:
         with:
           fetch-depth: 0
 
+      # actions/checkout adds the safe.directory entry under a temporary HOME,
+      # so git in later steps still sees the workspace as owned by another user.
+      - name: Trust the workspace
+        run: git config --global --add safe.directory "$GITHUB_WORKSPACE"
+
       - uses: actions/setup-go@v6
         with:
           go-version: stable
