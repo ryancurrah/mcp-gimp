@@ -88,7 +88,28 @@ jobs:
             git
             mingw-w64-ucrt-x86_64-gcc
             mingw-w64-ucrt-x86_64-pkgconf
+
+      # GIMP is installed separately because its dependency chain reaches
+      # Fortran and BLAS runtimes that MSYS2's repo periodically leaves
+      # unresolvable mid-rebuild (gegl -> openblas -> gcc-libgfortran ->
+      # gcc-libs). pacman then drops gimp from the transaction and still
+      # exits 0, so the build fails much later with a confusing
+      # "Package gimp-3.0 was not found". None of those runtimes are needed
+      # to compile against libgimp's headers, so they are assumed present,
+      # and the install is verified rather than trusted.
+      - name: Install GIMP (Windows)
+        if: startsWith(matrix.target, 'windows')
+        run: |
+          pacman -S --noconfirm --needed \
+            --assume-installed mingw-w64-ucrt-x86_64-gcc-libs \
+            --assume-installed mingw-w64-ucrt-x86_64-openblas \
+            --assume-installed mingw-w64-ucrt-x86_64-ffmpeg \
+            --assume-installed mingw-w64-ucrt-x86_64-suitesparse \
             mingw-w64-ucrt-x86_64-gimp
+          pacman -Qi mingw-w64-ucrt-x86_64-gimp > /dev/null || {
+            echo "::error::pacman reported success but GIMP is not installed"
+            exit 1
+          }
 
       - name: Install GIMP (macOS)
         if: startsWith(matrix.target, 'darwin')
