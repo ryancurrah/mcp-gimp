@@ -131,18 +131,32 @@ jobs:
               echo "CGO_LDFLAGS=-Wl,-rpath,$libdir" >> "$GITHUB_ENV"
               ;;
             windows_*)
-              # MSYS2 installs into the UCRT64 prefix, already on the default
-              # pkg-config path. Go is a native Windows binary and cannot exec
-              # an MSYS path, so hand it the Windows form. cygpath drops the
-              # extension, and cgo execs PKG_CONFIG verbatim without trying
-              # PATHEXT, so name the .exe outright.
-              pkgconf=$(cygpath -w "$(command -v pkgconf)")
-              case "$pkgconf" in *.exe) ;; *) pkgconf="$pkgconf.exe" ;; esac
-              if [ ! -x "$(cygpath -u "$pkgconf")" ]; then
-                echo "::error::pkgconf not found at $pkgconf"
-                exit 1
-              fi
-              echo "PKG_CONFIG=$pkgconf" >> "$GITHUB_ENV"
+              # GoReleaser is a native action rather than a run step, so it
+              # never sees the MSYS2 shell: it inherits the runner's PATH,
+              # where C:\mingw64 shadows UCRT64 and links a C runtime that
+              # does not match libgimp. Pin both tools to the UCRT64 copies
+              # and put that prefix first for everything else.
+              #
+              # The values have to be Windows paths because cgo execs them
+              # verbatim, and cygpath drops the extension while cgo does not
+              # consult PATHEXT, so each one names the .exe outright.
+              for tool in pkgconf gcc; do
+                unix_path=$(command -v "$tool") || {
+                  echo "::error::$tool not found in the UCRT64 environment"
+                  exit 1
+                }
+                win_path=$(cygpath -w "$unix_path")
+                case "$win_path" in *.exe) ;; *) win_path="$win_path.exe" ;; esac
+                if [ ! -x "$(cygpath -u "$win_path")" ]; then
+                  echo "::error::$tool missing at $win_path"
+                  exit 1
+                fi
+                case "$tool" in
+                  pkgconf) echo "PKG_CONFIG=$win_path" >> "$GITHUB_ENV" ;;
+                  gcc) echo "CC=$win_path" >> "$GITHUB_ENV" ;;
+                esac
+              done
+              cygpath -w /ucrt64/bin >> "$GITHUB_PATH"
               ;;
           esac
 
@@ -150,6 +164,7 @@ jobs:
         run: |
           pkg-config --modversion gimp-3.0
           pkg-config --cflags gimp-3.0
+          "${CC:-gcc}" -dumpmachine
 
       - name: Run GoReleaser
         uses: goreleaser/goreleaser-action@v6
