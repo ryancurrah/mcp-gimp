@@ -34,10 +34,14 @@ jobs:
       - name: Upload coverage to Codecov
         uses: codecov/codecov-action@v7
         with:
+          token: ${{ secrets.CODECOV_TOKEN }}
           files: ./coverage.xml
           flags: unittests
           name: codecov-umbrella
-          fail_ci_if_error: false
+          # Dependabot pull requests run without access to Actions secrets,
+          # so the token is empty there and a tokenless upload is expected to
+          # fail. Only insist on a successful upload when a token was supplied.
+          fail_ci_if_error: ${{ secrets.CODECOV_TOKEN != '' }}
 
   plugin:
     name: GIMP plug-in
