@@ -18,7 +18,7 @@ import (
 )
 
 // totalTools is the number of tools the server exposes.
-const totalTools = 83
+const totalTools = 86
 
 // fakeGimp records the params each command received and replies with a canned
 // results payload.
@@ -170,7 +170,8 @@ func TestEveryToolIsRegistered(t *testing.T) {
 		"get_state_snapshot", "call_api", "open_image", "export_image",
 		"auto_levels", "scale_image", "select_rectangle", "create_layer",
 		"draw_line", "add_text", "apply_drop_shadow", "export_icon_sizes",
-		"list_images", "get_histogram",
+		"list_images", "get_histogram", "fill_rounded_rectangle",
+		"draw_rounded_rectangle", "select_rounded_rectangle",
 	} {
 		if !slices.Contains(names, want) {
 			t.Errorf("tool %s is missing", want)

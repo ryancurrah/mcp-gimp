@@ -307,3 +307,165 @@ func TestAlignOffsetRejectsUnknownAlignment(t *testing.T) {
 		t.Error("alignOffset accepted an unknown alignment")
 	}
 }
+
+// The fill type tests below pin GIMP 3's GimpFillType numbering. GIMP 2 used
+// FOREGROUND=0, BACKGROUND=1, WHITE=2, TRANSPARENT=3, PATTERN=4; GIMP 3
+// inserted CIELAB_MIDDLE_GRAY at 2 and pushed the rest up by one. Using the
+// old numbers fails silently — "transparent" paints opaque white and the
+// layer still reports an alpha channel — so the values are asserted directly.
+func TestFillTypeUsesGimp3Numbering(t *testing.T) {
+	for _, tc := range []struct {
+		name string
+		got  int
+		want int
+	}{
+		{"foreground", fillForeground, 0},
+		{"background", fillBackground, 1},
+		{"cielab middle gray", fillCIELabMiddleGray, 2},
+		{"white", fillWhite, 3},
+		{"transparent", fillTransparent, 4},
+		{"pattern", fillPattern, 5},
+	} {
+		if tc.got != tc.want {
+			t.Errorf("%s = %d, want GIMP 3's %d", tc.name, tc.got, tc.want)
+		}
+	}
+}
+
+func TestFillTypeForResolvesNames(t *testing.T) {
+	for name, want := range map[string]int{
+		"":            fillForeground,
+		"foreground":  fillForeground,
+		"background":  fillBackground,
+		"white":       fillWhite,
+		"transparent": fillTransparent,
+		"none":        fillTransparent,
+		"pattern":     fillPattern,
+		"TRANSPARENT": fillTransparent,
+		"White":       fillWhite,
+	} {
+		got, err := fillTypeFor(name)
+		if err != nil {
+			t.Errorf("fillTypeFor(%q): %v", name, err)
+			continue
+		}
+
+		if got != want {
+			t.Errorf("fillTypeFor(%q) = %d, want %d", name, got, want)
+		}
+	}
+}
+
+func TestFillTypeForRejectsUnknown(t *testing.T) {
+	// A misspelled fill type must not quietly fall back to the foreground.
+	if _, err := fillTypeFor("nonsense"); err == nil {
+		t.Error("fillTypeFor accepted an unknown fill type")
+	}
+}
+
+func TestIsTransparentFill(t *testing.T) {
+	for name, want := range map[string]bool{
+		"transparent": true,
+		"none":        true,
+		"TRANSPARENT": true,
+		"None":        true,
+		"white":       false,
+		"#ffffff":     false,
+		"":            false,
+	} {
+		if got := isTransparentFill(name); got != want {
+			t.Errorf("isTransparentFill(%q) = %v, want %v", name, got, want)
+		}
+	}
+}
+
+func TestLayerModeAcceptsSchemaCasing(t *testing.T) {
+	// The tool schema documents these modes in upper case and supplies
+	// "NORMAL" as create_layer's default, so an upper-case name has to
+	// resolve or the tool cannot be called without blend_mode at all.
+	normal, err := layerMode("normal")
+	if err != nil {
+		t.Fatalf("layerMode(normal): %v", err)
+	}
+
+	for _, name := range []string{"NORMAL", "Normal"} {
+		got, err := layerMode(name)
+		if err != nil {
+			t.Fatalf("layerMode(%q): %v", name, err)
+		}
+
+		if got != normal {
+			t.Errorf("layerMode(%q) = %d, want %d", name, got, normal)
+		}
+	}
+
+	if _, err := layerMode("MULTIPLY"); err != nil {
+		t.Errorf("layerMode(MULTIPLY): %v", err)
+	}
+}
+
+func TestLayerModeNormalIsNotTheLegacyMode(t *testing.T) {
+	// GIMP 3's mode 0 is NORMAL_LEGACY, which composites differently.
+	if layerModeNormal == 0 {
+		t.Error("layerModeNormal is 0, which is NORMAL_LEGACY in GIMP 3")
+	}
+
+	if layerModeNormal != 28 {
+		t.Errorf("layerModeNormal = %d, want GIMP 3's 28", layerModeNormal)
+	}
+}
+
+func TestRoundedRectangleCommandsAreRegistered(t *testing.T) {
+	for _, name := range []string{
+		"fill_rounded_rectangle",
+		"draw_rounded_rectangle",
+		"select_rounded_rectangle",
+	} {
+		if _, ok := Lookup(name); !ok {
+			t.Errorf("command %s is not registered", name)
+		}
+	}
+}
+
+func TestShapeSelectArgsAddsCornerRadiiOnlyForRoundedRectangles(t *testing.T) {
+	p := decode(t, `{"x":10,"y":20,"width":100,"height":50,"radius":8}`)
+
+	plain := shapeSelectArgs(p, "gimp-image-select-rectangle", 1)
+	if _, ok := plain["corner-radius-x"]; ok {
+		t.Error("a plain rectangle was given a corner radius")
+	}
+
+	round := shapeSelectArgs(p, selectRoundRectangleProc, 1)
+	if round["corner-radius-x"] != 8.0 || round["corner-radius-y"] != 8.0 {
+		t.Errorf("corner radii = %v/%v, want 8/8",
+			round["corner-radius-x"], round["corner-radius-y"])
+	}
+
+	// The shared geometry must survive either way.
+	if plain["x"] != 10.0 || plain["width"] != 100.0 {
+		t.Errorf("geometry = %v,%v want 10,100", plain["x"], plain["width"])
+	}
+}
+
+func TestShapeSelectArgsPrefersPerAxisRadii(t *testing.T) {
+	p := decode(t, `{"radius":8,"radius_x":20,"radius_y":4}`)
+
+	args := shapeSelectArgs(p, selectRoundRectangleProc, 1)
+	if args["corner-radius-x"] != 20.0 || args["corner-radius-y"] != 4.0 {
+		t.Errorf("corner radii = %v/%v, want 20/4",
+			args["corner-radius-x"], args["corner-radius-y"])
+	}
+}
+
+func TestStrokeMethodIsLineNotBrush(t *testing.T) {
+	// Stroking with the paint method drags the active brush along the
+	// outline, which varies the width and breaks up at larger radii. Shape
+	// commands document line_width in pixels, so they must stroke a line.
+	if strokeMethodLine != 0 {
+		t.Errorf("strokeMethodLine = %d, want GIMP 3's 0", strokeMethodLine)
+	}
+
+	if strokeMethodPaint != 1 {
+		t.Errorf("strokeMethodPaint = %d, want GIMP 3's 1", strokeMethodPaint)
+	}
+}

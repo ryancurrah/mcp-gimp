@@ -2,6 +2,7 @@ package commands
 
 import (
 	"fmt"
+	"strings"
 
 	"github.com/ryancurrah/mcp-gimp/plugin/internal/gimpbridge"
 )
@@ -22,9 +23,14 @@ func init() {
 	register("add_image_layer", addImageLayer)
 }
 
+// layerModeNormal is GIMP 3's GIMP_LAYER_MODE_NORMAL. GIMP 2's plain 0 is
+// NORMAL_LEGACY in GIMP 3, which composites differently, so every layer this
+// plug-in creates uses this value.
+const layerModeNormal = 28
+
 // layerModes maps protocol blend mode names onto GimpLayerMode.
 var layerModes = map[string]int{
-	"normal":        28,
+	"normal":        layerModeNormal,
 	"dissolve":      1,
 	"multiply":      30,
 	"screen":        31,
@@ -48,12 +54,16 @@ var layerModes = map[string]int{
 }
 
 // layerMode resolves a blend mode name.
+//
+// The lookup is case-insensitive because the tool schema documents these modes
+// in upper case ("NORMAL", "MULTIPLY") and supplies "NORMAL" as the default
+// when a caller omits blend_mode, while the table is keyed in lower case.
 func layerMode(name string) (int, error) {
 	if name == "" {
-		return layerModes["normal"], nil
+		return layerModeNormal, nil
 	}
 
-	mode, ok := layerModes[name]
+	mode, ok := layerModes[strings.ToLower(name)]
 	if !ok {
 		return 0, fmt.Errorf("unknown blend mode %q", name)
 	}
@@ -105,13 +115,13 @@ func createLayer(p Params) (any, error) {
 	}
 
 	if fill := p.String("fill", ""); fill != "" {
-		if err := fillDrawable(layer, fill, fill == "transparent" || fill == "none"); err != nil {
+		if err := fillDrawable(layer, fill, isTransparentFill(fill)); err != nil {
 			return nil, err
 		}
 	} else {
 		// A fresh layer is otherwise undefined; clear it to transparent.
 		if err := run("gimp-drawable-fill",
-			gimpbridge.Args{"drawable": layer, "fill-type": 3}); err != nil {
+			gimpbridge.Args{"drawable": layer, "fill-type": fillTransparent}); err != nil {
 			return nil, err
 		}
 	}
@@ -332,7 +342,7 @@ func fillLayer(p Params) (any, error) {
 
 	color := p.String("color", "white")
 
-	if err := fillDrawable(layer, color, color == "transparent" || color == "none"); err != nil {
+	if err := fillDrawable(layer, color, isTransparentFill(color)); err != nil {
 		return nil, err
 	}
 
@@ -360,17 +370,9 @@ func fillSelection(p Params) (any, error) {
 		}
 	}
 
-	fillType := 0 // FOREGROUND
-
-	switch p.String("fill_type", "") {
-	case "background":
-		fillType = 1
-	case "white":
-		fillType = 2
-	case "transparent":
-		fillType = 3
-	case "pattern":
-		fillType = 4
+	fillType, err := fillTypeFor(p.String("fill_type", ""))
+	if err != nil {
+		return nil, err
 	}
 
 	if err := run("gimp-drawable-edit-fill",

@@ -222,7 +222,7 @@ func fontName(id gimpbridge.ObjectID) string {
 
 // editText rewrites an existing text layer.
 func editText(p Params) (any, error) {
-	_, layer, err := target(p)
+	image, layer, err := target(p)
 	if err != nil {
 		return nil, err
 	}
@@ -272,11 +272,37 @@ func editText(p Params) (any, error) {
 		}
 	}
 
+	// Changing the text or the font changes the rendered width, which leaves
+	// a layer that was centred or right-aligned sitting at its old offset.
+	// Re-aligning here keeps an edited caption where the caller put it.
+	if align := p.String("align", ""); align != "" && align != "left" {
+		_, y, err := drawableOffsets(layer)
+		if err != nil {
+			return nil, err
+		}
+
+		if err := alignLayer(image, layer, align, p.Int("x", 0), p.Int("y", y)); err != nil {
+			return nil, err
+		}
+	}
+
 	if err := flush(); err != nil {
 		return nil, err
 	}
 
-	return map[string]any{"status": "success", "layer_id": int(layer)}, nil
+	result := map[string]any{"status": "success", "layer_id": int(layer)}
+
+	// An edit reflows the layer, so report the new box the way add_text does;
+	// callers lay the rest of the page out from it.
+	if w, h, err := drawableSize(layer); err == nil {
+		result["text_width"], result["text_height"] = w, h
+	}
+
+	if x, y, err := drawableOffsets(layer); err == nil {
+		result["position"] = map[string]int{"x": x, "y": y}
+	}
+
+	return result, nil
 }
 
 // listFonts reports the fonts GIMP can use.

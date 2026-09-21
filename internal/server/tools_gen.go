@@ -36,9 +36,10 @@ func (in *NewCanvasInput) SetDefaults() {
 
 // GetImageBitmapInput holds the arguments for the get_image_bitmap tool.
 type GetImageBitmapInput struct {
-	MaxWidth  *int           `json:"max_width" jsonschema:"Target dimensions for scaling (aspect-ratio preserved). Omit for full resolution."`
-	MaxHeight *int           `json:"max_height" jsonschema:"Target dimensions for scaling (aspect-ratio preserved). Omit for full resolution."`
-	Region    map[string]any `json:"region" jsonschema:"Dictionary with keys: - origin_x, origin_y: Top-left corner of region to extract - width, height: Dimensions of region to extract - max_width, max_height: Optional scaling for the extracted region"`
+	MaxWidth   *int           `json:"max_width" jsonschema:"Target dimensions for scaling (aspect-ratio preserved). Omit for full resolution."`
+	MaxHeight  *int           `json:"max_height" jsonschema:"Target dimensions for scaling (aspect-ratio preserved). Omit for full resolution."`
+	Region     map[string]any `json:"region" jsonschema:"Dictionary with keys: - origin_x, origin_y: Top-left corner of region to extract - width, height: Dimensions of region to extract - max_width, max_height: Optional scaling for the extracted region"`
+	ImageIndex int            `json:"image_index" jsonschema:"Target image index (default 0)"`
 }
 
 // GetImageMetadataInput holds the arguments for the get_image_metadata tool.
@@ -381,6 +382,27 @@ func (in *SelectRectangleInput) SetDefaults() {
 	}
 }
 
+// SelectRoundedRectangleInput holds the arguments for the select_rounded_rectangle tool.
+type SelectRoundedRectangleInput struct {
+	X          int     `json:"x" jsonschema:"Top-left corner of the selection"`
+	Y          int     `json:"y" jsonschema:"Top-left corner of the selection"`
+	Width      int     `json:"width" jsonschema:"Dimensions of the selection"`
+	Height     int     `json:"height" jsonschema:"Dimensions of the selection"`
+	Radius     float64 `json:"radius" jsonschema:"Corner radius in pixels; sets both axes unless radius_x/radius_y are given"`
+	RadiusX    float64 `json:"radius_x" jsonschema:"Horizontal corner radius (defaults to radius)"`
+	RadiusY    float64 `json:"radius_y" jsonschema:"Vertical corner radius (defaults to radius)"`
+	Operation  *string `json:"operation" jsonschema:"\"replace\" (default), \"add\", \"subtract\", \"intersect\""`
+	Feather    float64 `json:"feather" jsonschema:"Feather radius in pixels (default 0 = no feather)"`
+	ImageIndex int     `json:"image_index" jsonschema:"Target image index (default 0)"`
+}
+
+// SetDefaults applies the defaults documented for the select_rounded_rectangle tool.
+func (in *SelectRoundedRectangleInput) SetDefaults() {
+	if in.Operation == nil {
+		in.Operation = ptr("replace")
+	}
+}
+
 // SelectEllipseInput holds the arguments for the select_ellipse tool.
 type SelectEllipseInput struct {
 	X          int     `json:"x" jsonschema:"Top-left corner of the bounding box"`
@@ -622,6 +644,28 @@ func (in *DrawRectangleInput) SetDefaults() {
 	}
 }
 
+// DrawRoundedRectangleInput holds the arguments for the draw_rounded_rectangle tool.
+type DrawRoundedRectangleInput struct {
+	X          int      `json:"x" jsonschema:"Top-left corner"`
+	Y          int      `json:"y" jsonschema:"Top-left corner"`
+	Width      int      `json:"width" jsonschema:"Rectangle dimensions"`
+	Height     int      `json:"height" jsonschema:"Rectangle dimensions"`
+	Radius     float64  `json:"radius" jsonschema:"Corner radius in pixels; sets both axes unless radius_x/radius_y are given"`
+	RadiusX    float64  `json:"radius_x" jsonschema:"Horizontal corner radius (defaults to radius)"`
+	RadiusY    float64  `json:"radius_y" jsonschema:"Vertical corner radius (defaults to radius)"`
+	Color      *string  `json:"color" jsonschema:"Stroke color; uses current foreground if omitted"`
+	LineWidth  *float64 `json:"line_width" jsonschema:"Stroke width in pixels (default 2.0)"`
+	LayerName  *string  `json:"layer_name" jsonschema:"Target layer; defaults to active layer"`
+	ImageIndex int      `json:"image_index" jsonschema:"Target image index (default 0)"`
+}
+
+// SetDefaults applies the defaults documented for the draw_rounded_rectangle tool.
+func (in *DrawRoundedRectangleInput) SetDefaults() {
+	if in.LineWidth == nil {
+		in.LineWidth = ptr(2.0)
+	}
+}
+
 // DrawEllipseInput holds the arguments for the draw_ellipse tool.
 type DrawEllipseInput struct {
 	X          int      `json:"x" jsonschema:"Top-left corner of the bounding box"`
@@ -647,6 +691,20 @@ type FillRectangleInput struct {
 	Y          int     `json:"y" jsonschema:"Top-left corner"`
 	Width      int     `json:"width" jsonschema:"Rectangle dimensions"`
 	Height     int     `json:"height" jsonschema:"Rectangle dimensions"`
+	Color      string  `json:"color" jsonschema:"Fill color (CSS name, hex, or rgb() string)"`
+	LayerName  *string `json:"layer_name" jsonschema:"Target layer; defaults to active layer"`
+	ImageIndex int     `json:"image_index" jsonschema:"Target image index (default 0)"`
+}
+
+// FillRoundedRectangleInput holds the arguments for the fill_rounded_rectangle tool.
+type FillRoundedRectangleInput struct {
+	X          int     `json:"x" jsonschema:"Top-left corner"`
+	Y          int     `json:"y" jsonschema:"Top-left corner"`
+	Width      int     `json:"width" jsonschema:"Rectangle dimensions"`
+	Height     int     `json:"height" jsonschema:"Rectangle dimensions"`
+	Radius     float64 `json:"radius" jsonschema:"Corner radius in pixels; sets both axes unless radius_x/radius_y are given"`
+	RadiusX    float64 `json:"radius_x" jsonschema:"Horizontal corner radius (defaults to radius)"`
+	RadiusY    float64 `json:"radius_y" jsonschema:"Vertical corner radius (defaults to radius)"`
 	Color      string  `json:"color" jsonschema:"Fill color (CSS name, hex, or rgb() string)"`
 	LayerName  *string `json:"layer_name" jsonschema:"Target layer; defaults to active layer"`
 	ImageIndex int     `json:"image_index" jsonschema:"Target image index (default 0)"`
@@ -722,11 +780,13 @@ type EditTextInput struct {
 	Size       *float64 `json:"size" jsonschema:"New font size in pixels (omit to leave unchanged)"`
 	Color      *string  `json:"color" jsonschema:"New text color (omit to leave unchanged)"`
 	ImageIndex int      `json:"image_index" jsonschema:"Target image index (default 0)"`
+	Align      *string  `json:"align" jsonschema:"Re-apply this alignment after the edit: \"left\", \"center\" or \"right\""`
+	X          int      `json:"x" jsonschema:"Left margin for align=\"left\", or right margin for align=\"right\""`
 }
 
 // ListFontsInput holds the arguments for the list_fonts tool.
 type ListFontsInput struct {
-	Filter *string `json:"filter" jsonschema:"Optional string to filter font names (case-insensitive substring match)"`
+	Filter *string `json:"filter" jsonschema:"Case-insensitive regular expression matched against font names"`
 }
 
 // ApplyDropShadowInput holds the arguments for the apply_drop_shadow tool.
@@ -998,6 +1058,7 @@ type GetPixelColorInput struct {
 	Y          int     `json:"y" jsonschema:"Pixel coordinates"`
 	ImageIndex int     `json:"image_index" jsonschema:"Target image index (default 0)"`
 	LayerName  *string `json:"layer_name" jsonschema:"Layer to sample from; defaults to active layer"`
+	Composite  *bool   `json:"composite" jsonschema:"Sample the flattened image as displayed (default true, or false when layer_name is given)"`
 }
 
 // GetHistogramInput holds the arguments for the get_histogram tool.
@@ -1026,7 +1087,7 @@ func registerGenerated(r *registrar) {
 		Name:        "get_image_bitmap",
 		Command:     "get_image_bitmap",
 		Required:    nil,
-		Description: "Get the current open image in GIMP as an Image object with optional scaling and region selection.\n\nNo size restrictions — pass any max_width/max_height you need.\nFor large images, omit max_width/max_height to get the full resolution.\n\nSupports two main use cases:\n1. Full image with optional scaling (pass max_width/max_height)\n2. Region extraction with optional scaling (pass region dict)\n\nParameters:\n- max_width, max_height: Target dimensions for scaling (aspect-ratio preserved).\n  Omit for full resolution.\n- region: Dictionary with keys:\n    - origin_x, origin_y: Top-left corner of region to extract\n    - width, height: Dimensions of region to extract\n    - max_width, max_height: Optional scaling for the extracted region\n\nExamples:\n- Full image at full res: get_image_bitmap()\n- Full image scaled: get_image_bitmap(max_width=2048, max_height=2048)\n- Region: get_image_bitmap(region={\"origin_x\": 0, \"origin_y\": 0, \"width\": 512, \"height\": 512})\n\nReturns:\n- Image object containing PNG data in MCP-compliant format\n- Includes width, height, and base64-encoded image data\n\nThe returned Image object automatically handles base64 encoding and MIME types\naccording to the Model Context Protocol specification.\n\nRaises:\n- RuntimeError if no image is open, region is invalid, or export fails",
+		Description: "Get the current open image in GIMP as an Image object with optional scaling and region selection.\n\nNo size restrictions — pass any max_width/max_height you need.\nFor large images, omit max_width/max_height to get the full resolution.\n\nSupports two main use cases:\n1. Full image with optional scaling (pass max_width/max_height)\n2. Region extraction with optional scaling (pass region dict)\n\nParameters:\n- image_index: Target image index (default 0)\n- max_width, max_height: Target dimensions for scaling (aspect-ratio preserved).\n  Omit for full resolution.\n- region: Dictionary with keys:\n    - origin_x, origin_y: Top-left corner of region to extract\n    - width, height: Dimensions of region to extract\n    - max_width, max_height: Optional scaling for the extracted region\n\nExamples:\n- Full image at full res: get_image_bitmap()\n- Full image scaled: get_image_bitmap(max_width=2048, max_height=2048)\n- Region: get_image_bitmap(region={\"origin_x\": 0, \"origin_y\": 0, \"width\": 512, \"height\": 512})\n\nReturns:\n- Image object containing PNG data in MCP-compliant format\n- Includes width, height, and base64-encoded image data\n\nThe returned Image object automatically handles base64 encoding and MIME types\naccording to the Model Context Protocol specification.\n\nRaises:\n- RuntimeError if no image is open, region is invalid, or export fails",
 	})
 	addObject[GetImageMetadataInput](r, toolDef{
 		Name:        "get_image_metadata",
@@ -1184,6 +1245,12 @@ func registerGenerated(r *registrar) {
 		Required:    []string{"x", "y", "width", "height"},
 		Description: "Create a rectangular selection.\n\nParameters:\n- x, y: Top-left corner of the selection\n- width, height: Dimensions of the selection\n- operation: \"replace\" (default), \"add\", \"subtract\", \"intersect\"\n- feather: Feather radius in pixels (default 0 = no feather)\n- image_index: Target image index (default 0)\n\nReturns status dict.",
 	})
+	addObject[SelectRoundedRectangleInput](r, toolDef{
+		Name:        "select_rounded_rectangle",
+		Command:     "select_rounded_rectangle",
+		Required:    []string{"x", "y", "width", "height"},
+		Description: "Create a rectangular selection with rounded corners.\n\nParameters:\n- x, y: Top-left corner of the selection\n- width, height: Dimensions of the selection\n- radius: Corner radius in pixels\n- radius_x, radius_y: Per-axis radii, for elliptical corners\n- operation: \"replace\" (default), \"add\", \"subtract\", \"intersect\"\n- feather: Feather radius in pixels (default 0)\n- image_index: Target image index (default 0)\n\nReturns status dict.",
+	})
 	addObject[SelectEllipseInput](r, toolDef{
 		Name:        "select_ellipse",
 		Command:     "select_ellipse",
@@ -1316,6 +1383,12 @@ func registerGenerated(r *registrar) {
 		Required:    []string{"x", "y", "width", "height"},
 		Description: "Draw a rectangle outline (stroke only) on a layer.\n\nParameters:\n- x, y: Top-left corner\n- width, height: Rectangle dimensions\n- color: Stroke color; uses current foreground if omitted\n- line_width: Stroke width in pixels (default 2.0)\n- layer_name: Target layer; defaults to active layer\n- image_index: Target image index (default 0)\n\nReturns status dict.",
 	})
+	addObject[DrawRoundedRectangleInput](r, toolDef{
+		Name:        "draw_rounded_rectangle",
+		Command:     "draw_rounded_rectangle",
+		Required:    []string{"x", "y", "width", "height"},
+		Description: "Draw a rounded rectangle outline (stroke only) on a layer.\n\nParameters:\n- x, y: Top-left corner\n- width, height: Rectangle dimensions\n- radius: Corner radius in pixels\n- radius_x, radius_y: Per-axis radii, for elliptical corners\n- color: Stroke color; uses current foreground if omitted\n- line_width: Stroke width in pixels (default 2.0)\n- layer_name: Target layer; defaults to active layer\n- image_index: Target image index (default 0)\n\nReturns status dict.",
+	})
 	addObject[DrawEllipseInput](r, toolDef{
 		Name:        "draw_ellipse",
 		Command:     "draw_ellipse",
@@ -1327,6 +1400,12 @@ func registerGenerated(r *registrar) {
 		Command:     "fill_rectangle",
 		Required:    []string{"x", "y", "width", "height", "color"},
 		Description: "Fill a rectangular region with a solid color.\n\nParameters:\n- x, y: Top-left corner\n- width, height: Rectangle dimensions\n- color: Fill color (CSS name, hex, or rgb() string)\n- layer_name: Target layer; defaults to active layer\n- image_index: Target image index (default 0)\n\nReturns status dict.",
+	})
+	addObject[FillRoundedRectangleInput](r, toolDef{
+		Name:        "fill_rounded_rectangle",
+		Command:     "fill_rounded_rectangle",
+		Required:    []string{"x", "y", "width", "height", "color"},
+		Description: "Fill a rectangle with rounded corners.\n\nCards, banners, buttons and pills are this shape. A pill is a rounded\nrectangle whose radius is half its height.\n\nParameters:\n- x, y: Top-left corner\n- width, height: Rectangle dimensions\n- radius: Corner radius in pixels\n- radius_x, radius_y: Per-axis radii, for elliptical corners\n- color: Fill color (CSS name, hex, or rgb() string)\n- layer_name: Target layer; defaults to active layer\n- image_index: Target image index (default 0)\n\nReturns status dict.",
 	})
 	addObject[FillEllipseInput](r, toolDef{
 		Name:        "fill_ellipse",
@@ -1350,13 +1429,13 @@ func registerGenerated(r *registrar) {
 		Name:        "edit_text",
 		Command:     "edit_text",
 		Required:    []string{"layer_name"},
-		Description: "Edit an existing text layer's content or formatting.\n\nParameters:\n- layer_name: Name of the text layer to edit\n- text: New text content (omit to leave unchanged)\n- font: New font family (omit to leave unchanged)\n- size: New font size in pixels (omit to leave unchanged)\n- color: New text color (omit to leave unchanged)\n- image_index: Target image index (default 0)\n\nReturns status dict.",
+		Description: "Edit an existing text layer's content or formatting.\n\nChanging the text, font or size reflows the layer. Pass align to keep a\ncentred or right-aligned caption in place; without it the layer keeps its\nold offset and appears to drift as the width changes.\n\nParameters:\n- layer_name: Name of the text layer to edit\n- text: New text content (omit to leave unchanged)\n- font: New font family (omit to leave unchanged)\n- size: New font size in pixels (omit to leave unchanged)\n- color: New text color (omit to leave unchanged)\n- align: Re-apply \"left\", \"center\" or \"right\" after the edit\n- x: Margin used by align (default 0)\n- image_index: Target image index (default 0)\n\nReturns: {status, layer_id, text_width, text_height, position}",
 	})
 	addObject[ListFontsInput](r, toolDef{
 		Name:        "list_fonts",
 		Command:     "list_fonts",
 		Required:    nil,
-		Description: "List available fonts installed in GIMP.\n\nParameters:\n- filter: Optional string to filter font names (case-insensitive substring match)\n\nReturns: {fonts: [font_name, ...], count}",
+		Description: "List available fonts installed in GIMP.\n\nA bare install can report well over a thousand fonts, so pass a filter\nrather than reading the whole list.\n\nParameters:\n- filter: Case-insensitive regular expression, e.g. \"snell\" or \"^Avenir.*Bold$\"\n\nReturns: {fonts: [font_name, ...], count}",
 	})
 	addObject[ApplyDropShadowInput](r, toolDef{
 		Name:        "apply_drop_shadow",
@@ -1482,7 +1561,7 @@ func registerGenerated(r *registrar) {
 		Name:        "get_pixel_color",
 		Command:     "get_pixel_color",
 		Required:    []string{"x", "y"},
-		Description: "Get the color of a single pixel.\n\nParameters:\n- x, y: Pixel coordinates\n- image_index: Target image index (default 0)\n- layer_name: Layer to sample from; defaults to active layer\n\nReturns: {color_hex, color_rgb: [r, g, b], alpha}",
+		Description: "Get the color of a single pixel.\n\nBy default this reads the composite — what the image actually looks like at\nthat point, with every visible layer blended. Naming a layer, or passing\ncomposite=False, reads that one layer's own pixel instead, which can differ:\na layer covered by the stack still has its own color there.\n\nParameters:\n- x, y: Pixel coordinates\n- composite: Sample the flattened image (default true; false samples one layer)\n- layer_name: Layer to sample; defaults to the active layer, and implies composite=False\n- image_index: Target image index (default 0)\n\nReturns: {color, x, y, composite} where color is a CSS \"rgba(r,g,b,a)\" string\nwith a 0-1 alpha.",
 	})
 	addObject[GetHistogramInput](r, toolDef{
 		Name:        "get_histogram",
@@ -1493,7 +1572,7 @@ func registerGenerated(r *registrar) {
 }
 
 // generatedToolCount is how many tools registerGenerated adds.
-const generatedToolCount = 79
+const generatedToolCount = 82
 
 // Descriptions for the tools registered by hand in handwritten.go.
 const (

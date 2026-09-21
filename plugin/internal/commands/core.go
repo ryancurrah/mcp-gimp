@@ -3,6 +3,7 @@ package commands
 import (
 	"fmt"
 	"runtime"
+	"strings"
 
 	"github.com/ryancurrah/mcp-gimp/plugin/internal/gimpbridge"
 )
@@ -205,7 +206,7 @@ func newCanvas(p Params) (any, error) {
 
 	// Layer type follows the image base type, plus alpha when asked for or
 	// when the fill is transparent.
-	transparent := fill == "transparent" || fill == "none"
+	transparent := isTransparentFill(fill)
 	layerType := base * 2
 
 	if alpha || transparent {
@@ -214,7 +215,7 @@ func newCanvas(p Params) (any, error) {
 
 	lv, err := run1("gimp-layer-new", gimpbridge.Args{
 		"image": image, "name": name, "width": width, "height": height,
-		"type": layerType, "opacity": 100.0, "mode": 0,
+		"type": layerType, "opacity": 100.0, "mode": layerModeNormal,
 	})
 	if err != nil {
 		return nil, err
@@ -253,12 +254,63 @@ func newCanvas(p Params) (any, error) {
 	}, nil
 }
 
+// GimpFillType, as GIMP 3 numbers it.
+//
+// GIMP 3 inserted CIELAB_MIDDLE_GRAY at 2, which pushed white, transparent and
+// pattern one place up from the values GIMP 2 used. Getting this wrong is
+// silent rather than loud: asking for transparent under the old numbering
+// paints opaque white, and the layer still reports an alpha channel. This
+// server targets GIMP 3 only, so these are the only correct values.
+const (
+	fillForeground = iota
+	fillBackground
+	fillCIELabMiddleGray
+	fillWhite
+	fillTransparent
+	fillPattern
+)
+
+// fillTypes maps the protocol's fill names onto GimpFillType.
+var fillTypes = map[string]int{
+	"foreground":  fillForeground,
+	"background":  fillBackground,
+	"white":       fillWhite,
+	"transparent": fillTransparent,
+	"none":        fillTransparent,
+	"pattern":     fillPattern,
+}
+
+// fillTypeFor resolves a fill type name, defaulting to the foreground.
+func fillTypeFor(name string) (int, error) {
+	if name == "" {
+		return fillForeground, nil
+	}
+
+	fill, ok := fillTypes[strings.ToLower(name)]
+	if !ok {
+		return 0, fmt.Errorf("unknown fill type %q", name)
+	}
+
+	return fill, nil
+}
+
+// isTransparentFill reports whether a fill name asks for transparency rather
+// than a colour.
+func isTransparentFill(fill string) bool {
+	switch strings.ToLower(fill) {
+	case "transparent", "none":
+		return true
+	default:
+		return false
+	}
+}
+
 // fillDrawable fills a drawable with a CSS colour, or clears it when the fill
 // is transparent.
 func fillDrawable(drawable gimpbridge.ObjectID, fill string, transparent bool) error {
 	if transparent {
-		// Fill type 3 is TRANSPARENT.
-		return run("gimp-drawable-fill", gimpbridge.Args{"drawable": drawable, "fill-type": 3})
+		return run("gimp-drawable-fill",
+			gimpbridge.Args{"drawable": drawable, "fill-type": fillTransparent})
 	}
 
 	if err := run("gimp-context-set-foreground",
@@ -266,8 +318,8 @@ func fillDrawable(drawable gimpbridge.ObjectID, fill string, transparent bool) e
 		return err
 	}
 
-	// Fill type 0 is FOREGROUND.
-	return run("gimp-drawable-fill", gimpbridge.Args{"drawable": drawable, "fill-type": 0})
+	return run("gimp-drawable-fill",
+		gimpbridge.Args{"drawable": drawable, "fill-type": fillForeground})
 }
 
 // openImage loads a file and displays it.

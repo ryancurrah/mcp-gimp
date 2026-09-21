@@ -21,7 +21,7 @@
       "struct": "NewCanvasInput",
       "command": "new_canvas",
       "kind": "object",
-      "description": "Create a new blank canvas in GIMP and open it in a display window.\n\nParameters:\n- width: Canvas width in pixels\n- height: Canvas height in pixels\n- name: Layer/image name (default: \"Untitled\")\n- color_mode: \"RGB\" (default), \"RGBA\", \"GRAY\", \"GRAYA\"\n- fill: Fill color for the background layer. Any CSS color name or\n        hex string: \"white\" (default), \"black\", \"transparent\",\n        \"#FF5733\", \"rgb(100,200,50)\", etc.\n- resolution: DPI resolution (default: 72)\n\nReturns:\n- image_id: internal GIMP image ID\n- width / height: confirmed dimensions\n- color_mode: confirmed mode\n- display_opened: whether a GIMP window was opened\n\nExamples:\n- new_canvas(1024, 1024) — white 1024x1024 RGB canvas\n- new_canvas(1920, 1080, name=\"Background\", fill=\"black\")\n- new_canvas(512, 512, color_mode=\"RGBA\", fill=\"transparent\")",
+      "description": "Create a new blank canvas in GIMP and open it in a display window.\n\nParameters:\n- width: Canvas width in pixels\n- height: Canvas height in pixels\n- name: Layer/image name (default: \"Untitled\")\n- color_mode: \"RGB\" (default), \"RGBA\", \"GRAY\", \"GRAYA\"\n- fill: Fill color for the background layer. Any CSS color name or\n        hex string: \"white\" (default), \"black\", \"transparent\",\n        \"#FF5733\", \"rgb(100,200,50)\", etc.\n- resolution: DPI resolution (default: 72)\n\nReturns:\n- image_id: internal GIMP image ID\n- width / height: confirmed dimensions\n- color_mode: confirmed mode\n- display_opened: whether a GIMP window was opened\n\nExamples:\n- new_canvas(1024, 1024) \u2014 white 1024x1024 RGB canvas\n- new_canvas(1920, 1080, name=\"Background\", fill=\"black\")\n- new_canvas(512, 512, color_mode=\"RGBA\", fill=\"transparent\")",
       "params": [
         {
           "name": "width",
@@ -78,7 +78,7 @@
       "struct": "GetImageBitmapInput",
       "command": "get_image_bitmap",
       "kind": "image",
-      "description": "Get the current open image in GIMP as an Image object with optional scaling and region selection.\n\nNo size restrictions — pass any max_width/max_height you need.\nFor large images, omit max_width/max_height to get the full resolution.\n\nSupports two main use cases:\n1. Full image with optional scaling (pass max_width/max_height)\n2. Region extraction with optional scaling (pass region dict)\n\nParameters:\n- max_width, max_height: Target dimensions for scaling (aspect-ratio preserved).\n  Omit for full resolution.\n- region: Dictionary with keys:\n    - origin_x, origin_y: Top-left corner of region to extract\n    - width, height: Dimensions of region to extract\n    - max_width, max_height: Optional scaling for the extracted region\n\nExamples:\n- Full image at full res: get_image_bitmap()\n- Full image scaled: get_image_bitmap(max_width=2048, max_height=2048)\n- Region: get_image_bitmap(region={\"origin_x\": 0, \"origin_y\": 0, \"width\": 512, \"height\": 512})\n\nReturns:\n- Image object containing PNG data in MCP-compliant format\n- Includes width, height, and base64-encoded image data\n\nThe returned Image object automatically handles base64 encoding and MIME types\naccording to the Model Context Protocol specification.\n\nRaises:\n- RuntimeError if no image is open, region is invalid, or export fails",
+      "description": "Get the current open image in GIMP as an Image object with optional scaling and region selection.\n\nNo size restrictions \u2014 pass any max_width/max_height you need.\nFor large images, omit max_width/max_height to get the full resolution.\n\nSupports two main use cases:\n1. Full image with optional scaling (pass max_width/max_height)\n2. Region extraction with optional scaling (pass region dict)\n\nParameters:\n- image_index: Target image index (default 0)\n- max_width, max_height: Target dimensions for scaling (aspect-ratio preserved).\n  Omit for full resolution.\n- region: Dictionary with keys:\n    - origin_x, origin_y: Top-left corner of region to extract\n    - width, height: Dimensions of region to extract\n    - max_width, max_height: Optional scaling for the extracted region\n\nExamples:\n- Full image at full res: get_image_bitmap()\n- Full image scaled: get_image_bitmap(max_width=2048, max_height=2048)\n- Region: get_image_bitmap(region={\"origin_x\": 0, \"origin_y\": 0, \"width\": 512, \"height\": 512})\n\nReturns:\n- Image object containing PNG data in MCP-compliant format\n- Includes width, height, and base64-encoded image data\n\nThe returned Image object automatically handles base64 encoding and MIME types\naccording to the Model Context Protocol specification.\n\nRaises:\n- RuntimeError if no image is open, region is invalid, or export fails",
       "params": [
         {
           "name": "max_width",
@@ -101,6 +101,14 @@
           "field": "Region",
           "goType": "map[string]any",
           "description": "Dictionary with keys: - origin_x, origin_y: Top-left corner of region to extract - width, height: Dimensions of region to extract - max_width, max_height: Optional scaling for the extracted region",
+          "default": "",
+          "required": false
+        },
+        {
+          "name": "image_index",
+          "field": "ImageIndex",
+          "goType": "int",
+          "description": "Target image index (default 0)",
           "default": "",
           "required": false
         }
@@ -127,7 +135,7 @@
       "struct": "GetStateSnapshotInput",
       "command": "get_image_bitmap",
       "kind": "handwritten",
-      "description": "Return a live visual snapshot of the current image state — no file save needed.\n\nAI agents call this to get immediate visual feedback after any edit operation,\nletting them verify results and decide next steps without saving to disk.\n\nParameters:\n- image_index: Which open image to snapshot (default: 0 = most recent)\n- max_size: Maximum width/height of the returned preview in pixels (default: 512)\n- region: Optional dict {x, y, width, height} to zoom into a specific area\n          e.g. {\"x\": 200, \"y\": 300, \"width\": 100, \"height\": 80} for mouth area\n- label: Optional annotation label (logged but not drawn — for agent bookkeeping)\n\nReturns:\n- PNG image of the current GIMP canvas state (with alpha if present)\n\nTypical agent workflow:\n    1. open_image / new_canvas\n    2. <edit operations>\n    3. get_state_snapshot()          ← see result, decide next step\n    4. <more edits>\n    5. get_state_snapshot(region={\"x\":200,\"y\":300,\"width\":100,\"height\":80})\n    6. export_image when satisfied",
+      "description": "Return a live visual snapshot of the current image state \u2014 no file save needed.\n\nAI agents call this to get immediate visual feedback after any edit operation,\nletting them verify results and decide next steps without saving to disk.\n\nParameters:\n- image_index: Which open image to snapshot (default: 0 = most recent)\n- max_size: Maximum width/height of the returned preview in pixels (default: 512)\n- region: Optional dict {x, y, width, height} to zoom into a specific area\n          e.g. {\"x\": 200, \"y\": 300, \"width\": 100, \"height\": 80} for mouth area\n- label: Optional annotation label (logged but not drawn \u2014 for agent bookkeeping)\n\nReturns:\n- PNG image of the current GIMP canvas state (with alpha if present)\n\nTypical agent workflow:\n    1. open_image / new_canvas\n    2. <edit operations>\n    3. get_state_snapshot()          \u2190 see result, decide next step\n    4. <more edits>\n    5. get_state_snapshot(region={\"x\":200,\"y\":300,\"width\":100,\"height\":80})\n    6. export_image when satisfied",
       "params": [
         {
           "name": "image_index",
@@ -157,7 +165,7 @@
           "name": "label",
           "field": "Label",
           "goType": "string",
-          "description": "Optional annotation label (logged but not drawn — for agent bookkeeping)",
+          "description": "Optional annotation label (logged but not drawn \u2014 for agent bookkeeping)",
           "default": "",
           "required": false
         }
@@ -268,7 +276,7 @@
       "struct": "ExportImageInput",
       "command": "export_image",
       "kind": "object",
-      "description": "Export the current image to a raster file (PNG, JPEG, WEBP, TIFF).\n\nParameters:\n- file_path: Absolute path for the output file\n- format: Output format — \"png\" (default), \"jpeg\", \"webp\", \"tiff\"\n- quality: JPEG/WEBP quality 1-100 (default 90; ignored for PNG/TIFF)\n- flatten: Flatten all layers before export (default True)\n- image_index: Index of the image to export (default 0)\n\nReturns:\n- status, file_path, format, file_size_bytes",
+      "description": "Export the current image to a raster file (PNG, JPEG, WEBP, TIFF).\n\nParameters:\n- file_path: Absolute path for the output file\n- format: Output format \u2014 \"png\" (default), \"jpeg\", \"webp\", \"tiff\"\n- quality: JPEG/WEBP quality 1-100 (default 90; ignored for PNG/TIFF)\n- flatten: Flatten all layers before export (default True)\n- image_index: Index of the image to export (default 0)\n\nReturns:\n- status, file_path, format, file_size_bytes",
       "params": [
         {
           "name": "file_path",
@@ -282,7 +290,7 @@
           "name": "format",
           "field": "Format",
           "goType": "*string",
-          "description": "Output format — \"png\" (default), \"jpeg\", \"webp\", \"tiff\"",
+          "description": "Output format \u2014 \"png\" (default), \"jpeg\", \"webp\", \"tiff\"",
           "default": "ptr(\"png\")",
           "required": false
         },
@@ -317,7 +325,7 @@
       "struct": "BatchExportInput",
       "command": "batch_export",
       "kind": "object",
-      "description": "Export all open images (or a specific one) to a directory.\n\nParameters:\n- output_dir: Directory to write exported files into\n- format: \"png\", \"jpeg\", \"webp\", \"tiff\" (default \"png\")\n- quality: JPEG/WEBP quality (default 90)\n- name_pattern: Filename template — use {name} for image name, {index} for position\n- image_index: If set, export only that image; omit to export all open images\n\nReturns:\n- exported: list of {file_path, name, width, height}\n- count: number of files written\n- errors: list of any export errors",
+      "description": "Export all open images (or a specific one) to a directory.\n\nParameters:\n- output_dir: Directory to write exported files into\n- format: \"png\", \"jpeg\", \"webp\", \"tiff\" (default \"png\")\n- quality: JPEG/WEBP quality (default 90)\n- name_pattern: Filename template \u2014 use {name} for image name, {index} for position\n- image_index: If set, export only that image; omit to export all open images\n\nReturns:\n- exported: list of {file_path, name, width, height}\n- count: number of files written\n- errors: list of any export errors",
       "params": [
         {
           "name": "output_dir",
@@ -347,7 +355,7 @@
           "name": "name_pattern",
           "field": "NamePattern",
           "goType": "*string",
-          "description": "Filename template — use {name} for image name, {index} for position",
+          "description": "Filename template \u2014 use {name} for image name, {index} for position",
           "default": "ptr(\"{name}\")",
           "required": false
         },
@@ -391,13 +399,13 @@
       "struct": "AdjustCurvesInput",
       "command": "adjust_curves",
       "kind": "object",
-      "description": "Adjust tonal curves for a layer.\n\nParameters:\n- preset: Built-in curve shape — \"s_curve\" (default), \"lighten\", \"darken\", \"contrast\"\n- points: Custom control points as [[input, output], ...] override (overrides preset)\n- channel: \"value\" (all), \"red\", \"green\", \"blue\", \"alpha\"\n- image_index: Target image index (default 0)\n- layer_name: Layer to adjust; defaults to active layer\n\nReturns status dict.",
+      "description": "Adjust tonal curves for a layer.\n\nParameters:\n- preset: Built-in curve shape \u2014 \"s_curve\" (default), \"lighten\", \"darken\", \"contrast\"\n- points: Custom control points as [[input, output], ...] override (overrides preset)\n- channel: \"value\" (all), \"red\", \"green\", \"blue\", \"alpha\"\n- image_index: Target image index (default 0)\n- layer_name: Layer to adjust; defaults to active layer\n\nReturns status dict.",
       "params": [
         {
           "name": "preset",
           "field": "Preset",
           "goType": "*string",
-          "description": "Built-in curve shape — \"s_curve\" (default), \"lighten\", \"darken\", \"contrast\"",
+          "description": "Built-in curve shape \u2014 \"s_curve\" (default), \"lighten\", \"darken\", \"contrast\"",
           "default": "ptr(\"s_curve\")",
           "required": false
         },
@@ -718,13 +726,13 @@
       "struct": "DesaturateInput",
       "command": "desaturate",
       "kind": "object",
-      "description": "Convert a layer to grayscale (desaturate).\n\nParameters:\n- mode: Desaturation algorithm — \"luminosity\" (default), \"luma\", \"average\", \"lightness\"\n- image_index: Target image index (default 0)\n- layer_name: Layer to desaturate; defaults to active layer\n\nReturns status dict.",
+      "description": "Convert a layer to grayscale (desaturate).\n\nParameters:\n- mode: Desaturation algorithm \u2014 \"luminosity\" (default), \"luma\", \"average\", \"lightness\"\n- image_index: Target image index (default 0)\n- layer_name: Layer to desaturate; defaults to active layer\n\nReturns status dict.",
       "params": [
         {
           "name": "mode",
           "field": "Mode",
           "goType": "*string",
-          "description": "Desaturation algorithm — \"luminosity\" (default), \"luma\", \"average\", \"lightness\"",
+          "description": "Desaturation algorithm \u2014 \"luminosity\" (default), \"luma\", \"average\", \"lightness\"",
           "default": "ptr(\"luminosity\")",
           "required": false
         },
@@ -817,7 +825,7 @@
       "struct": "ScaleToFitInput",
       "command": "scale_to_fit",
       "kind": "object",
-      "description": "Scale an image to fit within a bounding box, preserving aspect ratio.\n\nParameters:\n- max_width: Maximum allowed width in pixels\n- max_height: Maximum allowed height in pixels\n- interpolation: \"cubic\" (default), \"linear\", \"none\"\n- image_index: Target image index (default 0)\n\nReturns: {status, width, height} — final dimensions after scaling",
+      "description": "Scale an image to fit within a bounding box, preserving aspect ratio.\n\nParameters:\n- max_width: Maximum allowed width in pixels\n- max_height: Maximum allowed height in pixels\n- interpolation: \"cubic\" (default), \"linear\", \"none\"\n- image_index: Target image index (default 0)\n\nReturns: {status, width, height} \u2014 final dimensions after scaling",
       "params": [
         {
           "name": "max_width",
@@ -858,7 +866,7 @@
       "struct": "CropToSelectionInput",
       "command": "crop_to_selection",
       "kind": "object",
-      "description": "Crop the image canvas to the current selection bounds.\n\nParameters:\n- autocrop: If True, auto-detect crop bounds instead of using selection (default False)\n- image_index: Target image index (default 0)\n\nReturns: {status, x, y, width, height} — crop region applied",
+      "description": "Crop the image canvas to the current selection bounds.\n\nParameters:\n- autocrop: If True, auto-detect crop bounds instead of using selection (default False)\n- image_index: Target image index (default 0)\n\nReturns: {status, x, y, width, height} \u2014 crop region applied",
       "params": [
         {
           "name": "autocrop",
@@ -932,13 +940,13 @@
       "struct": "RotateImageInput",
       "command": "rotate_image",
       "kind": "object",
-      "description": "Rotate the entire image.\n\nParameters:\n- angle: Rotation in degrees — 90, 180, 270 use lossless GIMP rotation;\n         other values rotate all layers with interpolation and flatten\n- image_index: Target image index (default 0)\n\nReturns status dict.",
+      "description": "Rotate the entire image.\n\nParameters:\n- angle: Rotation in degrees \u2014 90, 180, 270 use lossless GIMP rotation;\n         other values rotate all layers with interpolation and flatten\n- image_index: Target image index (default 0)\n\nReturns status dict.",
       "params": [
         {
           "name": "angle",
           "field": "Angle",
           "goType": "float64",
-          "description": "Rotation in degrees — 90, 180, 270 use lossless GIMP rotation; other values rotate all layers with interpolation and flatten",
+          "description": "Rotation in degrees \u2014 90, 180, 270 use lossless GIMP rotation; other values rotate all layers with interpolation and flatten",
           "default": "",
           "required": true
         },
@@ -982,7 +990,7 @@
       "struct": "ResizeCanvasInput",
       "command": "resize_canvas",
       "kind": "object",
-      "description": "Resize the image canvas without scaling the content.\n\nParameters:\n- width, height: New canvas dimensions in pixels\n- anchor: Position of existing content — \"center\" (default), \"top-left\", \"top\",\n          \"top-right\", \"left\", \"right\", \"bottom-left\", \"bottom\", \"bottom-right\"\n- fill: Color for new canvas areas — CSS color or \"transparent\"\n- image_index: Target image index (default 0)\n\nReturns: {status, width, height, offset_x, offset_y}",
+      "description": "Resize the image canvas without scaling the content.\n\nParameters:\n- width, height: New canvas dimensions in pixels\n- anchor: Position of existing content \u2014 \"center\" (default), \"top-left\", \"top\",\n          \"top-right\", \"left\", \"right\", \"bottom-left\", \"bottom\", \"bottom-right\"\n- fill: Color for new canvas areas \u2014 CSS color or \"transparent\"\n- image_index: Target image index (default 0)\n\nReturns: {status, width, height, offset_x, offset_y}",
       "params": [
         {
           "name": "width",
@@ -1004,7 +1012,7 @@
           "name": "anchor",
           "field": "Anchor",
           "goType": "*string",
-          "description": "Position of existing content — \"center\" (default), \"top-left\", \"top\", \"top-right\", \"left\", \"right\", \"bottom-left\", \"bottom\", \"bottom-right\"",
+          "description": "Position of existing content \u2014 \"center\" (default), \"top-left\", \"top\", \"top-right\", \"left\", \"right\", \"bottom-left\", \"bottom\", \"bottom-right\"",
           "default": "ptr(\"center\")",
           "required": false
         },
@@ -1012,7 +1020,7 @@
           "name": "fill",
           "field": "Fill",
           "goType": "*string",
-          "description": "Color for new canvas areas — CSS color or \"transparent\"",
+          "description": "Color for new canvas areas \u2014 CSS color or \"transparent\"",
           "default": "ptr(\"transparent\")",
           "required": false
         },
@@ -1064,6 +1072,95 @@
           "description": "Dimensions of the selection",
           "default": "",
           "required": true
+        },
+        {
+          "name": "operation",
+          "field": "Operation",
+          "goType": "*string",
+          "description": "\"replace\" (default), \"add\", \"subtract\", \"intersect\"",
+          "default": "ptr(\"replace\")",
+          "required": false
+        },
+        {
+          "name": "feather",
+          "field": "Feather",
+          "goType": "float64",
+          "description": "Feather radius in pixels (default 0 = no feather)",
+          "default": "",
+          "required": false
+        },
+        {
+          "name": "image_index",
+          "field": "ImageIndex",
+          "goType": "int",
+          "description": "Target image index (default 0)",
+          "default": "",
+          "required": false
+        }
+      ]
+    },
+    {
+      "name": "select_rounded_rectangle",
+      "struct": "SelectRoundedRectangleInput",
+      "command": "select_rounded_rectangle",
+      "kind": "object",
+      "description": "Create a rectangular selection with rounded corners.\n\nParameters:\n- x, y: Top-left corner of the selection\n- width, height: Dimensions of the selection\n- radius: Corner radius in pixels\n- radius_x, radius_y: Per-axis radii, for elliptical corners\n- operation: \"replace\" (default), \"add\", \"subtract\", \"intersect\"\n- feather: Feather radius in pixels (default 0)\n- image_index: Target image index (default 0)\n\nReturns status dict.",
+      "params": [
+        {
+          "name": "x",
+          "field": "X",
+          "goType": "int",
+          "description": "Top-left corner of the selection",
+          "default": "",
+          "required": true
+        },
+        {
+          "name": "y",
+          "field": "Y",
+          "goType": "int",
+          "description": "Top-left corner of the selection",
+          "default": "",
+          "required": true
+        },
+        {
+          "name": "width",
+          "field": "Width",
+          "goType": "int",
+          "description": "Dimensions of the selection",
+          "default": "",
+          "required": true
+        },
+        {
+          "name": "height",
+          "field": "Height",
+          "goType": "int",
+          "description": "Dimensions of the selection",
+          "default": "",
+          "required": true
+        },
+        {
+          "name": "radius",
+          "field": "Radius",
+          "goType": "float64",
+          "description": "Corner radius in pixels; sets both axes unless radius_x/radius_y are given",
+          "default": "",
+          "required": false
+        },
+        {
+          "name": "radius_x",
+          "field": "RadiusX",
+          "goType": "float64",
+          "description": "Horizontal corner radius (defaults to radius)",
+          "default": "",
+          "required": false
+        },
+        {
+          "name": "radius_y",
+          "field": "RadiusY",
+          "goType": "float64",
+          "description": "Vertical corner radius (defaults to radius)",
+          "default": "",
+          "required": false
         },
         {
           "name": "operation",
@@ -1294,7 +1391,7 @@
       "struct": "CreateLayerInput",
       "command": "create_layer",
       "kind": "object",
-      "description": "Create and insert a new layer into an image.\n\nParameters:\n- name: Layer name (default \"New Layer\")\n- width, height: Layer dimensions; defaults to image dimensions\n- fill: Initial fill — \"transparent\" (default), \"white\", \"black\", or any CSS color\n- opacity: Layer opacity 0-100 (default 100)\n- blend_mode: GIMP layer mode name — \"NORMAL\" (default), \"MULTIPLY\", \"SCREEN\", etc.\n- position: Stack position — -1 = top (default), 0 = bottom\n- image_index: Target image index (default 0)\n\nReturns: {layer_name, layer_id, width, height, position}",
+      "description": "Create and insert a new layer into an image.\n\nParameters:\n- name: Layer name (default \"New Layer\")\n- width, height: Layer dimensions; defaults to image dimensions\n- fill: Initial fill \u2014 \"transparent\" (default), \"white\", \"black\", or any CSS color\n- opacity: Layer opacity 0-100 (default 100)\n- blend_mode: GIMP layer mode name \u2014 \"NORMAL\" (default), \"MULTIPLY\", \"SCREEN\", etc.\n- position: Stack position \u2014 -1 = top (default), 0 = bottom\n- image_index: Target image index (default 0)\n\nReturns: {layer_name, layer_id, width, height, position}",
       "params": [
         {
           "name": "name",
@@ -1324,7 +1421,7 @@
           "name": "fill",
           "field": "Fill",
           "goType": "*string",
-          "description": "Initial fill — \"transparent\" (default), \"white\", \"black\", or any CSS color",
+          "description": "Initial fill \u2014 \"transparent\" (default), \"white\", \"black\", or any CSS color",
           "default": "ptr(\"transparent\")",
           "required": false
         },
@@ -1340,7 +1437,7 @@
           "name": "blend_mode",
           "field": "BlendMode",
           "goType": "*string",
-          "description": "GIMP layer mode name — \"NORMAL\" (default), \"MULTIPLY\", \"SCREEN\", etc.",
+          "description": "GIMP layer mode name \u2014 \"NORMAL\" (default), \"MULTIPLY\", \"SCREEN\", etc.",
           "default": "ptr(\"NORMAL\")",
           "required": false
         },
@@ -1348,7 +1445,7 @@
           "name": "position",
           "field": "Position",
           "goType": "*int",
-          "description": "Stack position — -1 = top (default), 0 = bottom",
+          "description": "Stack position \u2014 -1 = top (default), 0 = bottom",
           "default": "ptr(-1)",
           "required": false
         },
@@ -1367,7 +1464,7 @@
       "struct": "AddImageLayerInput",
       "command": "add_image_layer",
       "kind": "object",
-      "description": "Place an image file into the open image as a new layer.\n\nThis is how one image is composited into another: every other command works within a single image, so a logo, photo or texture is brought in here rather than by opening it separately.\n\nParameters:\n- file_path: Absolute path to the image file to place\n- x, y: Top-left corner for the layer (default 0, 0)\n- align: \"left\" (default, uses x), \"center\", or \"right\" (x is the right margin)\n- width, height: Scale the layer to this size; giving one keeps the aspect ratio\n- name: Name for the new layer\n- opacity: Layer opacity 0-100 (default 100)\n- position: Stack position — -1 = top (default), 0 = bottom\n- image_index: Target image index (default 0)\n\nReturns: {status, layer_id, width, height, position}",
+      "description": "Place an image file into the open image as a new layer.\n\nThis is how one image is composited into another: every other command works within a single image, so a logo, photo or texture is brought in here rather than by opening it separately.\n\nParameters:\n- file_path: Absolute path to the image file to place\n- x, y: Top-left corner for the layer (default 0, 0)\n- align: \"left\" (default, uses x), \"center\", or \"right\" (x is the right margin)\n- width, height: Scale the layer to this size; giving one keeps the aspect ratio\n- name: Name for the new layer\n- opacity: Layer opacity 0-100 (default 100)\n- position: Stack position \u2014 -1 = top (default), 0 = bottom\n- image_index: Target image index (default 0)\n\nReturns: {status, layer_id, width, height, position}",
       "params": [
         {
           "name": "file_path",
@@ -1437,7 +1534,7 @@
           "name": "position",
           "field": "Position",
           "goType": "*int",
-          "description": "Stack position — -1 = top (default), 0 = bottom",
+          "description": "Stack position \u2014 -1 = top (default), 0 = bottom",
           "default": "ptr(-1)",
           "required": false
         },
@@ -2010,6 +2107,103 @@
       ]
     },
     {
+      "name": "draw_rounded_rectangle",
+      "struct": "DrawRoundedRectangleInput",
+      "command": "draw_rounded_rectangle",
+      "kind": "object",
+      "description": "Draw a rounded rectangle outline (stroke only) on a layer.\n\nParameters:\n- x, y: Top-left corner\n- width, height: Rectangle dimensions\n- radius: Corner radius in pixels\n- radius_x, radius_y: Per-axis radii, for elliptical corners\n- color: Stroke color; uses current foreground if omitted\n- line_width: Stroke width in pixels (default 2.0)\n- layer_name: Target layer; defaults to active layer\n- image_index: Target image index (default 0)\n\nReturns status dict.",
+      "params": [
+        {
+          "name": "x",
+          "field": "X",
+          "goType": "int",
+          "description": "Top-left corner",
+          "default": "",
+          "required": true
+        },
+        {
+          "name": "y",
+          "field": "Y",
+          "goType": "int",
+          "description": "Top-left corner",
+          "default": "",
+          "required": true
+        },
+        {
+          "name": "width",
+          "field": "Width",
+          "goType": "int",
+          "description": "Rectangle dimensions",
+          "default": "",
+          "required": true
+        },
+        {
+          "name": "height",
+          "field": "Height",
+          "goType": "int",
+          "description": "Rectangle dimensions",
+          "default": "",
+          "required": true
+        },
+        {
+          "name": "radius",
+          "field": "Radius",
+          "goType": "float64",
+          "description": "Corner radius in pixels; sets both axes unless radius_x/radius_y are given",
+          "default": "",
+          "required": false
+        },
+        {
+          "name": "radius_x",
+          "field": "RadiusX",
+          "goType": "float64",
+          "description": "Horizontal corner radius (defaults to radius)",
+          "default": "",
+          "required": false
+        },
+        {
+          "name": "radius_y",
+          "field": "RadiusY",
+          "goType": "float64",
+          "description": "Vertical corner radius (defaults to radius)",
+          "default": "",
+          "required": false
+        },
+        {
+          "name": "color",
+          "field": "Color",
+          "goType": "*string",
+          "description": "Stroke color; uses current foreground if omitted",
+          "default": "",
+          "required": false
+        },
+        {
+          "name": "line_width",
+          "field": "LineWidth",
+          "goType": "*float64",
+          "description": "Stroke width in pixels (default 2.0)",
+          "default": "ptr(2.0)",
+          "required": false
+        },
+        {
+          "name": "layer_name",
+          "field": "LayerName",
+          "goType": "*string",
+          "description": "Target layer; defaults to active layer",
+          "default": "",
+          "required": false
+        },
+        {
+          "name": "image_index",
+          "field": "ImageIndex",
+          "goType": "int",
+          "description": "Target image index (default 0)",
+          "default": "",
+          "required": false
+        }
+      ]
+    },
+    {
       "name": "draw_ellipse",
       "struct": "DrawEllipseInput",
       "command": "draw_ellipse",
@@ -2120,6 +2314,95 @@
           "description": "Rectangle dimensions",
           "default": "",
           "required": true
+        },
+        {
+          "name": "color",
+          "field": "Color",
+          "goType": "string",
+          "description": "Fill color (CSS name, hex, or rgb() string)",
+          "default": "",
+          "required": true
+        },
+        {
+          "name": "layer_name",
+          "field": "LayerName",
+          "goType": "*string",
+          "description": "Target layer; defaults to active layer",
+          "default": "",
+          "required": false
+        },
+        {
+          "name": "image_index",
+          "field": "ImageIndex",
+          "goType": "int",
+          "description": "Target image index (default 0)",
+          "default": "",
+          "required": false
+        }
+      ]
+    },
+    {
+      "name": "fill_rounded_rectangle",
+      "struct": "FillRoundedRectangleInput",
+      "command": "fill_rounded_rectangle",
+      "kind": "object",
+      "description": "Fill a rectangle with rounded corners.\n\nCards, banners, buttons and pills are this shape. A pill is a rounded\nrectangle whose radius is half its height.\n\nParameters:\n- x, y: Top-left corner\n- width, height: Rectangle dimensions\n- radius: Corner radius in pixels\n- radius_x, radius_y: Per-axis radii, for elliptical corners\n- color: Fill color (CSS name, hex, or rgb() string)\n- layer_name: Target layer; defaults to active layer\n- image_index: Target image index (default 0)\n\nReturns status dict.",
+      "params": [
+        {
+          "name": "x",
+          "field": "X",
+          "goType": "int",
+          "description": "Top-left corner",
+          "default": "",
+          "required": true
+        },
+        {
+          "name": "y",
+          "field": "Y",
+          "goType": "int",
+          "description": "Top-left corner",
+          "default": "",
+          "required": true
+        },
+        {
+          "name": "width",
+          "field": "Width",
+          "goType": "int",
+          "description": "Rectangle dimensions",
+          "default": "",
+          "required": true
+        },
+        {
+          "name": "height",
+          "field": "Height",
+          "goType": "int",
+          "description": "Rectangle dimensions",
+          "default": "",
+          "required": true
+        },
+        {
+          "name": "radius",
+          "field": "Radius",
+          "goType": "float64",
+          "description": "Corner radius in pixels; sets both axes unless radius_x/radius_y are given",
+          "default": "",
+          "required": false
+        },
+        {
+          "name": "radius_x",
+          "field": "RadiusX",
+          "goType": "float64",
+          "description": "Horizontal corner radius (defaults to radius)",
+          "default": "",
+          "required": false
+        },
+        {
+          "name": "radius_y",
+          "field": "RadiusY",
+          "goType": "float64",
+          "description": "Vertical corner radius (defaults to radius)",
+          "default": "",
+          "required": false
         },
         {
           "name": "color",
@@ -2298,7 +2581,7 @@
       "struct": "AddTextInput",
       "command": "add_text",
       "kind": "object",
-      "description": "Add a text layer to an image.\n\nParameters:\n- text: The text string to render\n- x, y: Position of the text layer's top-left corner (default 0, 0)\n- font: Font family name — \"Sans\" (default), \"Serif\", etc.\n- size: Font size in pixels (default 24)\n- color: Text color (CSS name, hex, or rgb() string; default \"black\")\n- align: \"left\" (default, places the text at x), \"center\" to centre it on the\n         image, or \"right\" to place it x pixels in from the right edge\n- image_index: Target image index (default 0)\n\nCentring needs the rendered width, so prefer align over measuring the text\nand repositioning the layer yourself.\n\nReturns: {layer_name, layer_id, text_width, text_height, position}",
+      "description": "Add a text layer to an image.\n\nParameters:\n- text: The text string to render\n- x, y: Position of the text layer's top-left corner (default 0, 0)\n- font: Font family name \u2014 \"Sans\" (default), \"Serif\", etc.\n- size: Font size in pixels (default 24)\n- color: Text color (CSS name, hex, or rgb() string; default \"black\")\n- align: \"left\" (default, places the text at x), \"center\" to centre it on the\n         image, or \"right\" to place it x pixels in from the right edge\n- image_index: Target image index (default 0)\n\nCentring needs the rendered width, so prefer align over measuring the text\nand repositioning the layer yourself.\n\nReturns: {layer_name, layer_id, text_width, text_height, position}",
       "params": [
         {
           "name": "text",
@@ -2328,7 +2611,7 @@
           "name": "font",
           "field": "Font",
           "goType": "*string",
-          "description": "Font family name — \"Sans\" (default), \"Serif\", etc.",
+          "description": "Font family name \u2014 \"Sans\" (default), \"Serif\", etc.",
           "default": "ptr(\"Sans\")",
           "required": false
         },
@@ -2371,7 +2654,7 @@
       "struct": "EditTextInput",
       "command": "edit_text",
       "kind": "object",
-      "description": "Edit an existing text layer's content or formatting.\n\nParameters:\n- layer_name: Name of the text layer to edit\n- text: New text content (omit to leave unchanged)\n- font: New font family (omit to leave unchanged)\n- size: New font size in pixels (omit to leave unchanged)\n- color: New text color (omit to leave unchanged)\n- image_index: Target image index (default 0)\n\nReturns status dict.",
+      "description": "Edit an existing text layer's content or formatting.\n\nChanging the text, font or size reflows the layer. Pass align to keep a\ncentred or right-aligned caption in place; without it the layer keeps its\nold offset and appears to drift as the width changes.\n\nParameters:\n- layer_name: Name of the text layer to edit\n- text: New text content (omit to leave unchanged)\n- font: New font family (omit to leave unchanged)\n- size: New font size in pixels (omit to leave unchanged)\n- color: New text color (omit to leave unchanged)\n- align: Re-apply \"left\", \"center\" or \"right\" after the edit\n- x: Margin used by align (default 0)\n- image_index: Target image index (default 0)\n\nReturns: {status, layer_id, text_width, text_height, position}",
       "params": [
         {
           "name": "layer_name",
@@ -2420,6 +2703,22 @@
           "description": "Target image index (default 0)",
           "default": "",
           "required": false
+        },
+        {
+          "name": "align",
+          "field": "Align",
+          "goType": "*string",
+          "description": "Re-apply this alignment after the edit: \"left\", \"center\" or \"right\"",
+          "default": "",
+          "required": false
+        },
+        {
+          "name": "x",
+          "field": "X",
+          "goType": "int",
+          "description": "Left margin for align=\"left\", or right margin for align=\"right\"",
+          "default": "",
+          "required": false
         }
       ]
     },
@@ -2428,13 +2727,13 @@
       "struct": "ListFontsInput",
       "command": "list_fonts",
       "kind": "object",
-      "description": "List available fonts installed in GIMP.\n\nParameters:\n- filter: Optional string to filter font names (case-insensitive substring match)\n\nReturns: {fonts: [font_name, ...], count}",
+      "description": "List available fonts installed in GIMP.\n\nA bare install can report well over a thousand fonts, so pass a filter\nrather than reading the whole list.\n\nParameters:\n- filter: Case-insensitive regular expression, e.g. \"snell\" or \"^Avenir.*Bold$\"\n\nReturns: {fonts: [font_name, ...], count}",
       "params": [
         {
           "name": "filter",
           "field": "Filter",
           "goType": "*string",
-          "description": "Optional string to filter font names (case-insensitive substring match)",
+          "description": "Case-insensitive regular expression matched against font names",
           "default": "",
           "required": false
         }
@@ -2666,7 +2965,7 @@
       "struct": "ApplyVignetteInput",
       "command": "apply_vignette",
       "kind": "object",
-      "description": "Apply a vignette darkening effect around the edges of a layer.\n\nParameters:\n- softness: Edge softness / fade width (default 3.0)\n- shape: Shape factor — 1.0 = elliptical (default), values >1 = more rectangular\n- layer_name: Target layer; defaults to active layer\n- image_index: Target image index (default 0)\n\nReturns status dict.",
+      "description": "Apply a vignette darkening effect around the edges of a layer.\n\nParameters:\n- softness: Edge softness / fade width (default 3.0)\n- shape: Shape factor \u2014 1.0 = elliptical (default), values >1 = more rectangular\n- layer_name: Target layer; defaults to active layer\n- image_index: Target image index (default 0)\n\nReturns status dict.",
       "params": [
         {
           "name": "softness",
@@ -2680,7 +2979,7 @@
           "name": "shape",
           "field": "Shape",
           "goType": "*float64",
-          "description": "Shape factor — 1.0 = elliptical (default), values >1 = more rectangular",
+          "description": "Shape factor \u2014 1.0 = elliptical (default), values >1 = more rectangular",
           "default": "ptr(1.0)",
           "required": false
         },
@@ -2740,7 +3039,7 @@
       "struct": "ExportIconSizesInput",
       "command": "export_icon_sizes",
       "kind": "object",
-      "description": "Export an image as a complete icon set for Android or iOS.\n\nAndroid sizes: 48 (mdpi), 72 (hdpi), 96 (xhdpi), 144 (xxhdpi),\n               192 (xxxhdpi), 512 (Play Store)\niOS sizes: 20x1/2/3, 29x1/2/3, 40x2/3, 60x2/3, 76x1/2, 83.5x2, 1024x1\n\nParameters:\n- output_dir: Directory to write icon files into\n- platform: \"android\" (default) or \"ios\"\n- source_image_index: Image to use as source (default 0)\n- format: Output format — \"png\" (default)\n\nReturns: {exported: [{size, file_path}], count, platform}",
+      "description": "Export an image as a complete icon set for Android or iOS.\n\nAndroid sizes: 48 (mdpi), 72 (hdpi), 96 (xhdpi), 144 (xxhdpi),\n               192 (xxxhdpi), 512 (Play Store)\niOS sizes: 20x1/2/3, 29x1/2/3, 40x2/3, 60x2/3, 76x1/2, 83.5x2, 1024x1\n\nParameters:\n- output_dir: Directory to write icon files into\n- platform: \"android\" (default) or \"ios\"\n- source_image_index: Image to use as source (default 0)\n- format: Output format \u2014 \"png\" (default)\n\nReturns: {exported: [{size, file_path}], count, platform}",
       "params": [
         {
           "name": "output_dir",
@@ -2770,7 +3069,7 @@
           "name": "format",
           "field": "Format",
           "goType": "*string",
-          "description": "Output format — \"png\" (default)",
+          "description": "Output format \u2014 \"png\" (default)",
           "default": "ptr(\"png\")",
           "required": false
         }
@@ -2838,13 +3137,13 @@
       "struct": "WarpRegionInput",
       "command": "warp_region",
       "kind": "object",
-      "description": "Warp / liquify a region of the image by pushing pixels in a direction.\n\nUses GEGL warp (GIMP 3 native) with plug-in-iwarp fallback. Ideal for\nsubtle facial expression edits — e.g. turning a neutral mouth into a smile\nby pushing the mouth corners upward.\n\nParameters:\n- vectors: List of warp stroke dicts, each with:\n    - x, y      : center of the warp influence (pixels)\n    - dx, dy    : push direction — negative dy = push upward\n    - radius    : influence radius in pixels (default: 40)\n    - amount    : deform strength 0–1 (default: 0.3)\n- image_index: Which open image to edit (default: 0)\n- layer_name: Target layer; omit to use the active/top layer\n\nExamples — make a character smile:\n    warp_region(vectors=[\n        {\"x\": 215, \"y\": 355, \"dx\":  5, \"dy\": -8, \"radius\": 18, \"amount\": 0.45},\n        {\"x\": 295, \"y\": 355, \"dx\": -5, \"dy\": -8, \"radius\": 18, \"amount\": 0.45},\n        {\"x\": 255, \"y\": 370, \"dx\":  0, \"dy\": -4, \"radius\": 22, \"amount\": 0.30},\n    ])\n\nReturns: {\"warped_vectors\": N}",
+      "description": "Warp / liquify a region of the image by pushing pixels in a direction.\n\nUses GEGL warp (GIMP 3 native) with plug-in-iwarp fallback. Ideal for\nsubtle facial expression edits \u2014 e.g. turning a neutral mouth into a smile\nby pushing the mouth corners upward.\n\nParameters:\n- vectors: List of warp stroke dicts, each with:\n    - x, y      : center of the warp influence (pixels)\n    - dx, dy    : push direction \u2014 negative dy = push upward\n    - radius    : influence radius in pixels (default: 40)\n    - amount    : deform strength 0\u20131 (default: 0.3)\n- image_index: Which open image to edit (default: 0)\n- layer_name: Target layer; omit to use the active/top layer\n\nExamples \u2014 make a character smile:\n    warp_region(vectors=[\n        {\"x\": 215, \"y\": 355, \"dx\":  5, \"dy\": -8, \"radius\": 18, \"amount\": 0.45},\n        {\"x\": 295, \"y\": 355, \"dx\": -5, \"dy\": -8, \"radius\": 18, \"amount\": 0.45},\n        {\"x\": 255, \"y\": 370, \"dx\":  0, \"dy\": -4, \"radius\": 22, \"amount\": 0.30},\n    ])\n\nReturns: {\"warped_vectors\": N}",
       "params": [
         {
           "name": "vectors",
           "field": "Vectors",
           "goType": "[]any",
-          "description": "List of warp stroke dicts, each with: - x, y      : center of the warp influence (pixels) - dx, dy    : push direction — negative dy = push upward - radius    : influence radius in pixels (default: 40) - amount    : deform strength 0–1 (default: 0.3)",
+          "description": "List of warp stroke dicts, each with: - x, y      : center of the warp influence (pixels) - dx, dy    : push direction \u2014 negative dy = push upward - radius    : influence radius in pixels (default: 40) - amount    : deform strength 0\u20131 (default: 0.3)",
           "default": "",
           "required": true
         },
@@ -3152,7 +3451,7 @@
       "struct": "GetPixelColorInput",
       "command": "get_pixel_color",
       "kind": "object",
-      "description": "Get the color of a single pixel.\n\nParameters:\n- x, y: Pixel coordinates\n- image_index: Target image index (default 0)\n- layer_name: Layer to sample from; defaults to active layer\n\nReturns: {color_hex, color_rgb: [r, g, b], alpha}",
+      "description": "Get the color of a single pixel.\n\nBy default this reads the composite \u2014 what the image actually looks like at\nthat point, with every visible layer blended. Naming a layer, or passing\ncomposite=False, reads that one layer's own pixel instead, which can differ:\na layer covered by the stack still has its own color there.\n\nParameters:\n- x, y: Pixel coordinates\n- composite: Sample the flattened image (default true; false samples one layer)\n- layer_name: Layer to sample; defaults to the active layer, and implies composite=False\n- image_index: Target image index (default 0)\n\nReturns: {color, x, y, composite} where color is a CSS \"rgba(r,g,b,a)\" string\nwith a 0-1 alpha.",
       "params": [
         {
           "name": "x",
@@ -3183,6 +3482,14 @@
           "field": "LayerName",
           "goType": "*string",
           "description": "Layer to sample from; defaults to active layer",
+          "default": "",
+          "required": false
+        },
+        {
+          "name": "composite",
+          "field": "Composite",
+          "goType": "*bool",
+          "description": "Sample the flattened image as displayed (default true, or false when layer_name is given)",
           "default": "",
           "required": false
         }

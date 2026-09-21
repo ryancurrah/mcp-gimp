@@ -9,6 +9,7 @@ import (
 //nolint:gochecknoinits // the command table is assembled from several files
 func init() {
 	register("select_rectangle", selectRectangle)
+	register("select_rounded_rectangle", selectRoundedRectangle)
 	register("select_ellipse", selectEllipse)
 	register("select_by_color", selectByColor)
 	register("select_all", selectAll)
@@ -95,6 +96,40 @@ func selectRectangle(p Params) (any, error) {
 		"y":         p.Float("y", 0),
 		"width":     p.Float("width", 0),
 		"height":    p.Float("height", 0),
+	}); err != nil {
+		return nil, err
+	}
+
+	return selectionState(image)
+}
+
+// selectRoundedRectangle selects a rectangle with rounded corners.
+func selectRoundedRectangle(p Params) (any, error) {
+	image, err := imageAt(p.Int("image_index", 0))
+	if err != nil {
+		return nil, err
+	}
+
+	op, err := channelOp(p.String("operation", "replace"))
+	if err != nil {
+		return nil, err
+	}
+
+	if err := applySelectionContext(p); err != nil {
+		return nil, err
+	}
+
+	radius := p.Float("radius", 0)
+
+	if err := run(selectRoundRectangleProc, gimpbridge.Args{
+		"image":           image,
+		"operation":       op,
+		"x":               p.Float("x", 0),
+		"y":               p.Float("y", 0),
+		"width":           p.Float("width", 0),
+		"height":          p.Float("height", 0),
+		"corner-radius-x": p.Float("radius_x", radius),
+		"corner-radius-y": p.Float("radius_y", radius),
 	}); err != nil {
 		return nil, err
 	}

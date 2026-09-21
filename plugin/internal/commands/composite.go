@@ -124,7 +124,7 @@ func newSheet(width, height int) (gimpbridge.ObjectID, error) {
 
 	lv, err := run1("gimp-layer-new", gimpbridge.Args{
 		"image": image, "name": "Background", "width": width, "height": height,
-		"type": 1, "opacity": 100.0, "mode": 28,
+		"type": 1, "opacity": 100.0, "mode": layerModeNormal,
 	})
 	if err != nil {
 		return 0, err
@@ -143,7 +143,7 @@ func newSheet(width, height int) (gimpbridge.ObjectID, error) {
 	}
 
 	if err := run("gimp-drawable-fill",
-		gimpbridge.Args{"drawable": layer, "fill-type": 3}); err != nil {
+		gimpbridge.Args{"drawable": layer, "fill-type": fillTransparent}); err != nil {
 		return 0, err
 	}
 

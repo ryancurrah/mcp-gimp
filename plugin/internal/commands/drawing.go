@@ -12,8 +12,10 @@ func init() {
 	register("draw_line", drawLine)
 	register("draw_rectangle", drawRectangle)
 	register("draw_ellipse", drawEllipse)
+	register("draw_rounded_rectangle", drawRoundedRectangle)
 	register("fill_rectangle", fillRectangle)
 	register("fill_ellipse", fillEllipse)
+	register("fill_rounded_rectangle", fillRoundedRectangle)
 	register("gradient_fill", gradientFill)
 	register("get_pixel_color", getPixelColor)
 	register("get_context_state", getContextState)
@@ -123,6 +125,10 @@ func drawLine(p Params) (any, error) {
 	return map[string]any{"status": "success", "points": len(coords) / 2}, nil
 }
 
+// selectRoundRectangleProc is the PDB procedure behind every rounded
+// rectangle command; it takes two extra corner-radius arguments.
+const selectRoundRectangleProc = "gimp-image-select-round-rectangle"
+
 // drawRectangle strokes a rectangle outline.
 func drawRectangle(p Params) (any, error) {
 	return strokeShape(p, "gimp-image-select-rectangle")
@@ -131,6 +137,64 @@ func drawRectangle(p Params) (any, error) {
 // drawEllipse strokes an ellipse outline.
 func drawEllipse(p Params) (any, error) {
 	return strokeShape(p, "gimp-image-select-ellipse")
+}
+
+// drawRoundedRectangle strokes a rounded rectangle outline.
+func drawRoundedRectangle(p Params) (any, error) {
+	return strokeShape(p, selectRoundRectangleProc)
+}
+
+// GimpStrokeMethod values. LINE draws the outline geometrically at a given
+// line width; PAINT_METHOD drags the active brush along it.
+const (
+	strokeMethodLine = iota
+	strokeMethodPaint
+)
+
+// applyLineStroke makes gimp-drawable-edit-stroke-selection draw a plain line
+// of an exact width.
+//
+// The default stroke method drags the active brush along the outline, so the
+// result carries the brush's soft edge and spacing: the width varies around
+// the shape, and at larger radii and widths the outline visibly breaks up.
+// A shape command documents line_width in pixels, so it has to stroke a line.
+func applyLineStroke(p Params) error {
+	if err := run("gimp-context-set-stroke-method",
+		gimpbridge.Args{"stroke-method": strokeMethodLine}); err != nil {
+		return err
+	}
+
+	width := p.Float("line_width", 0)
+	if width <= 0 {
+		width = p.Float("width", 0)
+	}
+
+	if width <= 0 {
+		width = 2
+	}
+
+	return run("gimp-context-set-line-width", gimpbridge.Args{"line-width": width})
+}
+
+// shapeSelectArgs builds the arguments for the gimp-image-select-* procedure
+// behind a shape command.
+func shapeSelectArgs(p Params, selectProc string, image gimpbridge.ObjectID) gimpbridge.Args {
+	args := gimpbridge.Args{
+		"image":     image,
+		"operation": channelOpReplace,
+		"x":         p.Float("x", 0),
+		"y":         p.Float("y", 0),
+		"width":     p.Float("width", 0),
+		"height":    p.Float("height", 0),
+	}
+
+	if selectProc == selectRoundRectangleProc {
+		radius := p.Float("radius", 0)
+		args["corner-radius-x"] = p.Float("radius_x", radius)
+		args["corner-radius-y"] = p.Float("radius_y", radius)
+	}
+
+	return args
 }
 
 // strokeShape selects a shape then strokes its outline, restoring an empty
@@ -145,16 +209,11 @@ func strokeShape(p Params, selectProc string) (any, error) {
 		return nil, err
 	}
 
-	args := gimpbridge.Args{
-		"image":     image,
-		"operation": channelOpReplace,
-		"x":         p.Float("x", 0),
-		"y":         p.Float("y", 0),
-		"width":     p.Float("width", 0),
-		"height":    p.Float("height", 0),
+	if err := applyLineStroke(p); err != nil {
+		return nil, err
 	}
 
-	if err := run(selectProc, args); err != nil {
+	if err := run(selectProc, shapeSelectArgs(p, selectProc, image)); err != nil {
 		return nil, err
 	}
 
@@ -184,6 +243,11 @@ func fillEllipse(p Params) (any, error) {
 	return fillShape(p, "gimp-image-select-ellipse")
 }
 
+// fillRoundedRectangle fills a rectangle with rounded corners.
+func fillRoundedRectangle(p Params) (any, error) {
+	return fillShape(p, selectRoundRectangleProc)
+}
+
 // fillShape selects a shape, fills it and clears the selection.
 func fillShape(p Params, selectProc string) (any, error) {
 	image, drawable, err := target(p)
@@ -198,21 +262,12 @@ func fillShape(p Params, selectProc string) (any, error) {
 		}
 	}
 
-	args := gimpbridge.Args{
-		"image":     image,
-		"operation": channelOpReplace,
-		"x":         p.Float("x", 0),
-		"y":         p.Float("y", 0),
-		"width":     p.Float("width", 0),
-		"height":    p.Float("height", 0),
-	}
-
-	if err := run(selectProc, args); err != nil {
+	if err := run(selectProc, shapeSelectArgs(p, selectProc, image)); err != nil {
 		return nil, err
 	}
 
 	if err := run("gimp-drawable-edit-fill",
-		gimpbridge.Args{"drawable": drawable, "fill-type": 0}); err != nil {
+		gimpbridge.Args{"drawable": drawable, "fill-type": fillForeground}); err != nil {
 		return nil, err
 	}
 
@@ -308,23 +363,48 @@ func gradientFill(p Params) (any, error) {
 
 // getPixelColor samples one pixel.
 func getPixelColor(p Params) (any, error) {
-	_, drawable, err := target(p)
+	image, drawable, err := target(p)
 	if err != nil {
 		return nil, err
 	}
 
-	v, err := run1("gimp-drawable-get-pixel", gimpbridge.Args{
-		"drawable": drawable,
-		"x-coord":  p.Int("x", 0),
-		"y-coord":  p.Int("y", 0),
-	})
+	x, y := p.Int("x", 0), p.Int("y", 0)
+
+	// Reading a pixel is usually a way of checking what the image looks like,
+	// so the composite is the default. Naming a layer says the caller wants
+	// that one layer's own pixel, which is a different question: a layer the
+	// stack hides still has its own colour there.
+	composite := p.Bool("composite", !p.Has("layer_name"))
+
+	var v gimpbridge.Value
+
+	if composite {
+		v, err = run1("gimp-image-pick-color", gimpbridge.Args{
+			"image":     image,
+			"drawables": gimpbridge.Items{drawable},
+			"x":         float64(x),
+			"y":         float64(y),
+			// sample-merged is what reads the composite rather than the
+			// drawables, which are then only used to satisfy the signature.
+			"sample-merged":  true,
+			"sample-average": false,
+			"average-radius": 0.0,
+		})
+	} else {
+		v, err = run1("gimp-drawable-get-pixel", gimpbridge.Args{
+			"drawable": drawable,
+			"x-coord":  x,
+			"y-coord":  y,
+		})
+	}
+
 	if err != nil {
 		return nil, err
 	}
 
 	css, _ := v.(string)
 
-	return map[string]any{"color": css, "x": p.Int("x", 0), "y": p.Int("y", 0)}, nil
+	return map[string]any{"color": css, "x": x, "y": y, "composite": composite}, nil
 }
 
 // getContextState reports the paint context the drawing commands inherit.
