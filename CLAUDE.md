@@ -40,6 +40,10 @@ struct tag.
   through and the bridge resolves them. Never map names to GIMP's enum
   numbers in Go; that is how the GIMP 2→3 fill-type renumbering bug happened.
 - **Defaults live only in `SetDefaults`.** The schema reads them from there.
+- **Adding or removing a tool changes the tool count in the docs.** Update
+  every reference to it (`git grep -nE "[0-9]+ (MCP )?tools"`; today that is
+  README.md's opening line). Count the tools from the server's `tools/list`,
+  not by hand.
 
 ### Checks
 
