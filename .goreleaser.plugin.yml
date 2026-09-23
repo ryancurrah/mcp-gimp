@@ -1,0 +1,89 @@
+# Release configuration for the GIMP plug-in.
+#
+# The plug-in links libgimp through cgo, so it cannot be cross-compiled: each
+# target is built on a runner of that platform, with GIMP's development files
+# installed. One target is selected per run through PLUGIN_TARGET, and each run
+# appends its archive to the release the server job created.
+version: 2
+
+project_name: gimp-mcp-plugin
+
+builds:
+  - id: linux_amd64
+    skip: '{{ ne .Env.PLUGIN_TARGET "linux_amd64" }}'
+    dir: plugin
+    main: .
+    binary: gimp-mcp-plugin
+    env: [CGO_ENABLED=1]
+    goos: [linux]
+    goarch: [amd64]
+    ldflags: &ldflags
+      - -s -w -X main.version={{ .Version }}
+
+  - id: linux_arm64
+    skip: '{{ ne .Env.PLUGIN_TARGET "linux_arm64" }}'
+    dir: plugin
+    main: .
+    binary: gimp-mcp-plugin
+    env: [CGO_ENABLED=1]
+    goos: [linux]
+    goarch: [arm64]
+    ldflags: *ldflags
+
+  - id: darwin_amd64
+    skip: '{{ ne .Env.PLUGIN_TARGET "darwin_amd64" }}'
+    dir: plugin
+    main: .
+    binary: gimp-mcp-plugin
+    env: [CGO_ENABLED=1]
+    goos: [darwin]
+    goarch: [amd64]
+    ldflags: *ldflags
+
+  - id: darwin_arm64
+    skip: '{{ ne .Env.PLUGIN_TARGET "darwin_arm64" }}'
+    dir: plugin
+    main: .
+    binary: gimp-mcp-plugin
+    env: [CGO_ENABLED=1]
+    goos: [darwin]
+    goarch: [arm64]
+    ldflags: *ldflags
+
+  - id: windows_amd64
+    skip: '{{ ne .Env.PLUGIN_TARGET "windows_amd64" }}'
+    dir: plugin
+    main: .
+    binary: gimp-mcp-plugin
+    env: [CGO_ENABLED=1]
+    goos: [windows]
+    goarch: [amd64]
+    ldflags: *ldflags
+
+archives:
+  # GIMP loads a plug-in from a directory named after the executable, so the
+  # archive unpacks to exactly that: drop the folder into plug-ins/ and it
+  # works with no renaming.
+  - formats: ["tar.gz"]
+    wrap_in_directory: gimp-mcp-plugin
+    name_template: >-
+      {{ .ProjectName }}_
+      {{- title .Os }}_
+      {{- if eq .Arch "amd64" }}x86_64
+      {{- else if eq .Arch "386" }}i386
+      {{- else }}{{ .Arch }}{{ end }}
+    files:
+      - LICENSE
+      - src: plugin/INSTALL.md
+        dst: INSTALL.md
+
+checksum:
+  # Every target runs its own release, so the checksum files must not collide.
+  name_template: "{{ .ProjectName }}_{{ .Env.PLUGIN_TARGET }}_checksums.txt"
+
+# The server release owns the tag's notes; these runs only add artifacts.
+changelog:
+  disable: true
+
+release:
+  mode: append

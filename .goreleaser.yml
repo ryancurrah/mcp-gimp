@@ -1,0 +1,91 @@
+version: 2
+
+project_name: mcp-gimp
+
+builds:
+  - id: mcp-gimp
+    main: ./cmd/mcp-gimp
+    binary: mcp-gimp
+    env:
+      # The MCP server talks to the plug-in over TCP and links nothing from
+      # GIMP, so it stays a static, cross-compiled binary. The plug-in is a
+      # separate cgo artifact; see plugin/.goreleaser.yml.
+      - CGO_ENABLED=0
+    goos: [linux, darwin, windows]
+    goarch: [amd64, arm64]
+    ldflags:
+      - -s -w -X main.version={{ .Version }}
+
+archives:
+  - name_template: >-
+      {{ .ProjectName }}_
+      {{- title .Os }}_
+      {{- if eq .Arch "amd64" }}x86_64
+      {{- else if eq .Arch "386" }}i386
+      {{- else }}{{ .Arch }}{{ end }}
+    wrap_in_directory: true
+    files:
+      - README.md
+      - LICENSE
+    format_overrides:
+      - goos: windows
+        formats: ["zip"]
+      - goos: darwin
+        formats: ["tar.xz"]
+      - goos: linux
+        formats: ["tar.xz"]
+
+checksum:
+  name_template: "checksums.txt"
+
+dockers_v2:
+  - dockerfile: Dockerfile
+    images:
+      - ryancurrah/mcp-gimp
+    tags:
+      - "latest"
+      - "{{ .Version }}"
+    platforms:
+      - linux/amd64
+      - linux/arm64
+    flags:
+      - --pull
+    labels:
+      "org.opencontainers.image.created": "{{ .Date }}"
+      "org.opencontainers.image.name": "{{ .ProjectName }}"
+      "org.opencontainers.image.revision": "{{ .FullCommit }}"
+      "org.opencontainers.image.version": "{{ .Version }}"
+      "org.opencontainers.image.source": "{{ .GitURL }}"
+      "org.opencontainers.image.description": "MCP server for GIMP 3"
+
+# The cask carries both the macOS and Linux archives; GoReleaser emits
+# on_macos/on_linux blocks and the rename stanzas that undo wrap_in_directory.
+# No `ids` filter: it matches archive ids, and the single archive above is
+# `default`.
+homebrew_casks:
+  - name: mcp-gimp
+    binaries: [mcp-gimp]
+    description: "MCP server for GIMP 3"
+    homepage: "https://github.com/ryancurrah/mcp-gimp"
+    directory: Casks
+    # Keep prereleases out of the tap.
+    skip_upload: auto
+    repository:
+      owner: ryancurrah
+      name: homebrew-tap
+      branch: main
+      token: "{{ .Env.HOMEBREW_TAP_TOKEN }}"
+    commit_author:
+      name: goreleaser-bot
+      email: bot@goreleaser.com
+    hooks:
+      post:
+        # The archives are unsigned, so Gatekeeper quarantines them.
+        install: |
+          if OS.mac?
+            system_command "/usr/bin/xattr",
+                           args: ["-dr", "com.apple.quarantine", "#{staged_path}/mcp-gimp"]
+          end
+    caveats: |
+      The other half of mcp-gimp runs inside GIMP:
+        brew install --cask ryancurrah/tap/gimp-mcp-plugin

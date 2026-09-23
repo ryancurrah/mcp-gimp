@@ -1,0 +1,18 @@
+# Binaries
+*.exe
+*.exe~
+*.dll
+*.so
+*.dylib
+/mcp-gimp
+/gimp-mcp-plugin
+
+# Test binary and coverage
+*.test
+coverage.*
+*.xml
+
+dist/
+
+.idea/
+.DS_Store

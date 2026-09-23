@@ -1,0 +1,2863 @@
+{
+  "gimp": "3.2.6",
+  "procedures": {
+    "file-jpeg-export": [
+      {
+        "name": "run-mode",
+        "type": "GimpRunMode",
+        "default": "noninteractive",
+        "choices": [
+          "interactive",
+          "noninteractive",
+          "with-last-vals"
+        ],
+        "blurb": "The run mode"
+      },
+      {
+        "name": "image",
+        "type": "GimpImage",
+        "blurb": "The image to export"
+      },
+      {
+        "name": "file",
+        "type": "GFile",
+        "blurb": "The file to export to"
+      },
+      {
+        "name": "options",
+        "type": "GimpExportOptions",
+        "blurb": "Export options"
+      },
+      {
+        "name": "quality",
+        "type": "gdouble",
+        "minimum": 0,
+        "maximum": 1,
+        "default": "0.9",
+        "blurb": "Quality of exported image"
+      },
+      {
+        "name": "smoothing",
+        "type": "gdouble",
+        "minimum": 0,
+        "maximum": 1,
+        "default": "0",
+        "blurb": "Smoothing factor for exported image"
+      },
+      {
+        "name": "optimize",
+        "type": "gboolean",
+        "default": "true",
+        "blurb": "Use optimized tables during Huffman coding"
+      },
+      {
+        "name": "progressive",
+        "type": "gboolean",
+        "default": "true",
+        "blurb": "Create progressive JPEG images"
+      },
+      {
+        "name": "cmyk",
+        "type": "gboolean",
+        "default": "false",
+        "blurb": "Create a CMYK JPEG image using the soft-proofing color profile"
+      },
+      {
+        "name": "sub-sampling",
+        "type": "gchararray",
+        "default": "sub-sampling-1x1",
+        "choices": [
+          "sub-sampling-1x1",
+          "sub-sampling-2x1",
+          "sub-sampling-1x2",
+          "sub-sampling-2x2"
+        ],
+        "blurb": "Sub-sampling type"
+      },
+      {
+        "name": "baseline",
+        "type": "gboolean",
+        "default": "true",
+        "blurb": "Force creation of a baseline JPEG (non-baseline JPEGs can't be read by all decoders)"
+      },
+      {
+        "name": "restart",
+        "type": "gint",
+        "minimum": 0,
+        "maximum": 64,
+        "default": "0",
+        "blurb": "Interval of restart markers (in MCU rows, 0 = no restart markers)"
+      },
+      {
+        "name": "dct",
+        "type": "gchararray",
+        "default": "integer",
+        "choices": [
+          "fixed",
+          "integer",
+          "float"
+        ],
+        "blurb": "DCT method to use"
+      },
+      {
+        "name": "include-exif",
+        "type": "gboolean",
+        "default": "false",
+        "blurb": "Save Exif (Exchangeable image file format) metadata"
+      },
+      {
+        "name": "include-iptc",
+        "type": "gboolean",
+        "default": "false",
+        "blurb": "Save IPTC (International Press Telecommunications Council) metadata"
+      },
+      {
+        "name": "include-xmp",
+        "type": "gboolean",
+        "default": "false",
+        "blurb": "Save XMP (Extensible Metadata Platform) metadata"
+      },
+      {
+        "name": "include-color-profile",
+        "type": "gboolean",
+        "default": "false",
+        "blurb": "Save the ICC color profile as metadata"
+      },
+      {
+        "name": "include-thumbnail",
+        "type": "gboolean",
+        "default": "true",
+        "blurb": "Save a smaller representation of the image as metadata"
+      },
+      {
+        "name": "include-comment",
+        "type": "gboolean",
+        "default": "false",
+        "blurb": "Save a comment as metadata"
+      }
+    ],
+    "file-png-export": [
+      {
+        "name": "run-mode",
+        "type": "GimpRunMode",
+        "default": "noninteractive",
+        "choices": [
+          "interactive",
+          "noninteractive",
+          "with-last-vals"
+        ],
+        "blurb": "The run mode"
+      },
+      {
+        "name": "image",
+        "type": "GimpImage",
+        "blurb": "The image to export"
+      },
+      {
+        "name": "file",
+        "type": "GFile",
+        "blurb": "The file to export to"
+      },
+      {
+        "name": "options",
+        "type": "GimpExportOptions",
+        "blurb": "Export options"
+      },
+      {
+        "name": "interlaced",
+        "type": "gboolean",
+        "default": "false",
+        "blurb": "Use Adam7 interlacing"
+      },
+      {
+        "name": "compression",
+        "type": "gint",
+        "minimum": 0,
+        "maximum": 9,
+        "default": "9",
+        "blurb": "Deflate Compression factor (0..9)"
+      },
+      {
+        "name": "bkgd",
+        "type": "gboolean",
+        "default": "true",
+        "blurb": "Write bKGD chunk (PNG metadata)"
+      },
+      {
+        "name": "offs",
+        "type": "gboolean",
+        "default": "false",
+        "blurb": "Write oFFs chunk (PNG metadata)"
+      },
+      {
+        "name": "phys",
+        "type": "gboolean",
+        "default": "true",
+        "blurb": "Write pHYs chunk (PNG metadata)"
+      },
+      {
+        "name": "time",
+        "type": "gboolean",
+        "default": "true",
+        "blurb": "Write tIME chunk (PNG metadata)"
+      },
+      {
+        "name": "save-transparent",
+        "type": "gboolean",
+        "default": "false",
+        "blurb": "Preserve color of completely transparent pixels"
+      },
+      {
+        "name": "optimize-palette",
+        "type": "gboolean",
+        "default": "false",
+        "blurb": "When checked, save as 1, 2, 4, or 8-bit depending on number of colors used. When unchecked, always save as 8-bit"
+      },
+      {
+        "name": "format",
+        "type": "gchararray",
+        "default": "auto",
+        "choices": [
+          "auto",
+          "rgb8",
+          "gray8",
+          "rgba8",
+          "graya8",
+          "rgb16",
+          "gray16",
+          "rgba16",
+          "graya16"
+        ],
+        "blurb": "PNG export format"
+      },
+      {
+        "name": "include-exif",
+        "type": "gboolean",
+        "default": "false",
+        "blurb": "Save Exif (Exchangeable image file format) metadata"
+      },
+      {
+        "name": "include-iptc",
+        "type": "gboolean",
+        "default": "false",
+        "blurb": "Save IPTC (International Press Telecommunications Council) metadata"
+      },
+      {
+        "name": "include-xmp",
+        "type": "gboolean",
+        "default": "false",
+        "blurb": "Save XMP (Extensible Metadata Platform) metadata"
+      },
+      {
+        "name": "include-color-profile",
+        "type": "gboolean",
+        "default": "false",
+        "blurb": "Save the ICC color profile as metadata"
+      },
+      {
+        "name": "include-thumbnail",
+        "type": "gboolean",
+        "default": "true",
+        "blurb": "Save a smaller representation of the image as metadata"
+      },
+      {
+        "name": "include-comment",
+        "type": "gboolean",
+        "default": "false",
+        "blurb": "Save a comment as metadata"
+      }
+    ],
+    "file-webp-export": [
+      {
+        "name": "run-mode",
+        "type": "GimpRunMode",
+        "default": "noninteractive",
+        "choices": [
+          "interactive",
+          "noninteractive",
+          "with-last-vals"
+        ],
+        "blurb": "The run mode"
+      },
+      {
+        "name": "image",
+        "type": "GimpImage",
+        "blurb": "The image to export"
+      },
+      {
+        "name": "file",
+        "type": "GFile",
+        "blurb": "The file to export to"
+      },
+      {
+        "name": "options",
+        "type": "GimpExportOptions",
+        "blurb": "Export options"
+      },
+      {
+        "name": "preset",
+        "type": "gchararray",
+        "default": "default",
+        "choices": [
+          "default",
+          "picture",
+          "photo",
+          "drawing",
+          "icon",
+          "text"
+        ],
+        "blurb": "WebP encoder preset"
+      },
+      {
+        "name": "lossless",
+        "type": "gboolean",
+        "default": "false",
+        "blurb": "Use lossless encoding"
+      },
+      {
+        "name": "quality",
+        "type": "gdouble",
+        "minimum": 0,
+        "maximum": 100,
+        "default": "90",
+        "blurb": "Quality of the image"
+      },
+      {
+        "name": "alpha-quality",
+        "type": "gdouble",
+        "minimum": 0,
+        "maximum": 100,
+        "default": "100",
+        "blurb": "Quality of the image's alpha channel"
+      },
+      {
+        "name": "use-sharp-yuv",
+        "type": "gboolean",
+        "default": "false",
+        "blurb": "Use sharper (but slower) RGB→YUV conversion"
+      },
+      {
+        "name": "animation-loop",
+        "type": "gboolean",
+        "default": "true",
+        "blurb": "Loop animation infinitely"
+      },
+      {
+        "name": "minimize-size",
+        "type": "gboolean",
+        "default": "true",
+        "blurb": "Minimize output file size"
+      },
+      {
+        "name": "keyframe-distance",
+        "type": "gint",
+        "minimum": 0,
+        "maximum": 2147483647,
+        "default": "50",
+        "blurb": "Maximum distance between keyframes"
+      },
+      {
+        "name": "default-delay",
+        "type": "gint",
+        "minimum": 0,
+        "maximum": 2147483647,
+        "default": "200",
+        "blurb": "Default delay (in milliseconds) to use when timestamps for frames are not available or forced."
+      },
+      {
+        "name": "force-delay",
+        "type": "gboolean",
+        "default": "false",
+        "blurb": "Force default delay on all frames"
+      },
+      {
+        "name": "animation",
+        "type": "gboolean",
+        "default": "false",
+        "blurb": "Use layers for animation"
+      },
+      {
+        "name": "include-exif",
+        "type": "gboolean",
+        "default": "false",
+        "blurb": "Save Exif (Exchangeable image file format) metadata"
+      },
+      {
+        "name": "include-iptc",
+        "type": "gboolean",
+        "default": "false",
+        "blurb": "Save IPTC (International Press Telecommunications Council) metadata"
+      },
+      {
+        "name": "include-xmp",
+        "type": "gboolean",
+        "default": "false",
+        "blurb": "Save XMP (Extensible Metadata Platform) metadata"
+      },
+      {
+        "name": "include-color-profile",
+        "type": "gboolean",
+        "default": "false",
+        "blurb": "Save the ICC color profile as metadata"
+      },
+      {
+        "name": "include-thumbnail",
+        "type": "gboolean",
+        "default": "true",
+        "blurb": "Save a smaller representation of the image as metadata"
+      }
+    ],
+    "gimp-airbrush-default": [
+      {
+        "name": "drawable",
+        "type": "GimpDrawable",
+        "blurb": "The affected drawable"
+      },
+      {
+        "name": "strokes",
+        "type": "GimpDoubleArray",
+        "blurb": "Array of stroke coordinates: { s1.x, s1.y, s2.x, s2.y, ..., sn.x, sn.y }"
+      }
+    ],
+    "gimp-context-get-antialias": [],
+    "gimp-context-get-background": [],
+    "gimp-context-get-brush": [],
+    "gimp-context-get-brush-size": [],
+    "gimp-context-get-feather": [],
+    "gimp-context-get-font": [],
+    "gimp-context-get-foreground": [],
+    "gimp-context-get-opacity": [],
+    "gimp-context-set-antialias": [
+      {
+        "name": "antialias",
+        "type": "gboolean",
+        "default": "false",
+        "blurb": "The antialias setting"
+      }
+    ],
+    "gimp-context-set-background": [
+      {
+        "name": "background",
+        "type": "GeglColor",
+        "blurb": "The background color"
+      }
+    ],
+    "gimp-context-set-brush-size": [
+      {
+        "name": "size",
+        "type": "gdouble",
+        "minimum": 1,
+        "maximum": 10000,
+        "default": "1",
+        "blurb": "Brush size in pixels"
+      }
+    ],
+    "gimp-context-set-feather": [
+      {
+        "name": "feather",
+        "type": "gboolean",
+        "default": "false",
+        "blurb": "The feather setting"
+      }
+    ],
+    "gimp-context-set-feather-radius": [
+      {
+        "name": "feather-radius-x",
+        "type": "gdouble",
+        "minimum": 0,
+        "maximum": 1000,
+        "default": "0",
+        "blurb": "The horizontal feather radius"
+      },
+      {
+        "name": "feather-radius-y",
+        "type": "gdouble",
+        "minimum": 0,
+        "maximum": 1000,
+        "default": "0",
+        "blurb": "The vertical feather radius"
+      }
+    ],
+    "gimp-context-set-foreground": [
+      {
+        "name": "foreground",
+        "type": "GeglColor",
+        "blurb": "The foreground color"
+      }
+    ],
+    "gimp-context-set-gradient-fg-bg-rgb": [],
+    "gimp-context-set-interpolation": [
+      {
+        "name": "interpolation",
+        "type": "GimpInterpolationType",
+        "default": "none",
+        "choices": [
+          "none",
+          "linear",
+          "cubic",
+          "nohalo",
+          "lohalo"
+        ],
+        "blurb": "The interpolation type"
+      }
+    ],
+    "gimp-context-set-line-width": [
+      {
+        "name": "line-width",
+        "type": "gdouble",
+        "minimum": 0,
+        "maximum": 2000,
+        "default": "0",
+        "blurb": "The line width setting"
+      }
+    ],
+    "gimp-context-set-sample-threshold-int": [
+      {
+        "name": "sample-threshold",
+        "type": "gint",
+        "minimum": 0,
+        "maximum": 255,
+        "default": "0",
+        "blurb": "The sample threshold setting"
+      }
+    ],
+    "gimp-context-set-stroke-method": [
+      {
+        "name": "stroke-method",
+        "type": "GimpStrokeMethod",
+        "default": "line",
+        "choices": [
+          "line",
+          "paint-method"
+        ],
+        "blurb": "The new stroke method"
+      }
+    ],
+    "gimp-context-set-transform-resize": [
+      {
+        "name": "transform-resize",
+        "type": "GimpTransformResize",
+        "default": "adjust",
+        "choices": [
+          "adjust",
+          "clip",
+          "crop",
+          "crop-with-aspect"
+        ],
+        "blurb": "The transform resize type"
+      }
+    ],
+    "gimp-display-delete": [
+      {
+        "name": "display",
+        "type": "GimpDisplay",
+        "blurb": "The display to delete"
+      }
+    ],
+    "gimp-display-id-is-valid": [
+      {
+        "name": "display-id",
+        "type": "gint",
+        "minimum": -2147483648,
+        "maximum": 2147483647,
+        "default": "0",
+        "blurb": "The display ID to check"
+      }
+    ],
+    "gimp-display-new": [
+      {
+        "name": "image",
+        "type": "GimpImage",
+        "blurb": "The image"
+      }
+    ],
+    "gimp-displays-flush": [],
+    "gimp-drawable-curves-spline": [
+      {
+        "name": "drawable",
+        "type": "GimpDrawable",
+        "blurb": "The drawable"
+      },
+      {
+        "name": "channel",
+        "type": "GimpHistogramChannel",
+        "default": "value",
+        "choices": [
+          "value",
+          "red",
+          "green",
+          "blue",
+          "alpha",
+          "luminance"
+        ],
+        "blurb": "The channel to modify"
+      },
+      {
+        "name": "points",
+        "type": "GimpDoubleArray",
+        "blurb": "The spline control points: { cp1.x, cp1.y, cp2.x, cp2.y, ... }"
+      }
+    ],
+    "gimp-drawable-edit-fill": [
+      {
+        "name": "drawable",
+        "type": "GimpDrawable",
+        "blurb": "The drawable to fill to"
+      },
+      {
+        "name": "fill-type",
+        "type": "GimpFillType",
+        "default": "foreground",
+        "choices": [
+          "foreground",
+          "background",
+          "cielab-middle-gray",
+          "white",
+          "transparent",
+          "pattern"
+        ],
+        "blurb": "The type of fill"
+      }
+    ],
+    "gimp-drawable-edit-gradient-fill": [
+      {
+        "name": "drawable",
+        "type": "GimpDrawable",
+        "blurb": "The affected drawable"
+      },
+      {
+        "name": "gradient-type",
+        "type": "GimpGradientType",
+        "default": "linear",
+        "choices": [
+          "linear",
+          "bilinear",
+          "radial",
+          "square",
+          "conical-symmetric",
+          "conical-asymmetric",
+          "shapeburst-angular",
+          "shapeburst-spherical",
+          "shapeburst-dimpled",
+          "spiral-clockwise",
+          "spiral-anticlockwise"
+        ],
+        "blurb": "The type of gradient"
+      },
+      {
+        "name": "offset",
+        "type": "gdouble",
+        "minimum": 0,
+        "maximum": 1.7976931348623157e+308,
+        "default": "0",
+        "blurb": "Offset relates to the starting and ending coordinates specified for the blend. This parameter is mode dependent."
+      },
+      {
+        "name": "supersample",
+        "type": "gboolean",
+        "default": "false",
+        "blurb": "Do adaptive supersampling"
+      },
+      {
+        "name": "supersample-max-depth",
+        "type": "gint",
+        "minimum": 1,
+        "maximum": 9,
+        "default": "1",
+        "blurb": "Maximum recursion levels for supersampling"
+      },
+      {
+        "name": "supersample-threshold",
+        "type": "gdouble",
+        "minimum": 0,
+        "maximum": 4,
+        "default": "0",
+        "blurb": "Supersampling threshold"
+      },
+      {
+        "name": "dither",
+        "type": "gboolean",
+        "default": "false",
+        "blurb": "Use dithering to reduce banding"
+      },
+      {
+        "name": "x1",
+        "type": "gdouble",
+        "minimum": -1.7976931348623157e+308,
+        "maximum": 1.7976931348623157e+308,
+        "default": "0",
+        "blurb": "The x coordinate of this gradient's starting point"
+      },
+      {
+        "name": "y1",
+        "type": "gdouble",
+        "minimum": -1.7976931348623157e+308,
+        "maximum": 1.7976931348623157e+308,
+        "default": "0",
+        "blurb": "The y coordinate of this gradient's starting point"
+      },
+      {
+        "name": "x2",
+        "type": "gdouble",
+        "minimum": -1.7976931348623157e+308,
+        "maximum": 1.7976931348623157e+308,
+        "default": "0",
+        "blurb": "The x coordinate of this gradient's ending point"
+      },
+      {
+        "name": "y2",
+        "type": "gdouble",
+        "minimum": -1.7976931348623157e+308,
+        "maximum": 1.7976931348623157e+308,
+        "default": "0",
+        "blurb": "The y coordinate of this gradient's ending point"
+      }
+    ],
+    "gimp-drawable-edit-stroke-selection": [
+      {
+        "name": "drawable",
+        "type": "GimpDrawable",
+        "blurb": "The drawable to stroke to"
+      }
+    ],
+    "gimp-drawable-fill": [
+      {
+        "name": "drawable",
+        "type": "GimpDrawable",
+        "blurb": "The drawable"
+      },
+      {
+        "name": "fill-type",
+        "type": "GimpFillType",
+        "default": "foreground",
+        "choices": [
+          "foreground",
+          "background",
+          "cielab-middle-gray",
+          "white",
+          "transparent",
+          "pattern"
+        ],
+        "blurb": "The type of fill"
+      }
+    ],
+    "gimp-drawable-get-height": [
+      {
+        "name": "drawable",
+        "type": "GimpDrawable",
+        "blurb": "The drawable"
+      }
+    ],
+    "gimp-drawable-get-offsets": [
+      {
+        "name": "drawable",
+        "type": "GimpDrawable",
+        "blurb": "The drawable"
+      }
+    ],
+    "gimp-drawable-get-pixel": [
+      {
+        "name": "drawable",
+        "type": "GimpDrawable",
+        "blurb": "The drawable"
+      },
+      {
+        "name": "x-coord",
+        "type": "gint",
+        "minimum": 0,
+        "maximum": 2147483647,
+        "default": "0",
+        "blurb": "The x coordinate"
+      },
+      {
+        "name": "y-coord",
+        "type": "gint",
+        "minimum": 0,
+        "maximum": 2147483647,
+        "default": "0",
+        "blurb": "The y coordinate"
+      }
+    ],
+    "gimp-drawable-get-width": [
+      {
+        "name": "drawable",
+        "type": "GimpDrawable",
+        "blurb": "The drawable"
+      }
+    ],
+    "gimp-drawable-histogram": [
+      {
+        "name": "drawable",
+        "type": "GimpDrawable",
+        "blurb": "The drawable"
+      },
+      {
+        "name": "channel",
+        "type": "GimpHistogramChannel",
+        "default": "value",
+        "choices": [
+          "value",
+          "red",
+          "green",
+          "blue",
+          "alpha",
+          "luminance"
+        ],
+        "blurb": "The channel to query"
+      },
+      {
+        "name": "start-range",
+        "type": "gdouble",
+        "minimum": 0,
+        "maximum": 1,
+        "default": "0",
+        "blurb": "Start of the intensity measurement range"
+      },
+      {
+        "name": "end-range",
+        "type": "gdouble",
+        "minimum": 0,
+        "maximum": 1,
+        "default": "0",
+        "blurb": "End of the intensity measurement range"
+      }
+    ],
+    "gimp-drawable-levels-stretch": [
+      {
+        "name": "drawable",
+        "type": "GimpDrawable",
+        "blurb": "The drawable"
+      }
+    ],
+    "gimp-eraser-default": [
+      {
+        "name": "drawable",
+        "type": "GimpDrawable",
+        "blurb": "The affected drawable"
+      },
+      {
+        "name": "strokes",
+        "type": "GimpDoubleArray",
+        "blurb": "Array of stroke coordinates: { s1.x, s1.y, s2.x, s2.y, ..., sn.x, sn.y }"
+      }
+    ],
+    "gimp-file-load": [
+      {
+        "name": "run-mode",
+        "type": "GimpRunMode",
+        "default": "interactive",
+        "choices": [
+          "interactive",
+          "noninteractive",
+          "with-last-vals"
+        ],
+        "blurb": "The run mode"
+      },
+      {
+        "name": "file",
+        "type": "GFile",
+        "blurb": "The file to load"
+      }
+    ],
+    "gimp-file-load-layer": [
+      {
+        "name": "run-mode",
+        "type": "GimpRunMode",
+        "default": "interactive",
+        "choices": [
+          "interactive",
+          "noninteractive",
+          "with-last-vals"
+        ],
+        "blurb": "The run mode"
+      },
+      {
+        "name": "image",
+        "type": "GimpImage",
+        "blurb": "Destination image"
+      },
+      {
+        "name": "file",
+        "type": "GFile",
+        "blurb": "The file to load"
+      }
+    ],
+    "gimp-file-save": [
+      {
+        "name": "run-mode",
+        "type": "GimpRunMode",
+        "default": "interactive",
+        "choices": [
+          "interactive",
+          "noninteractive",
+          "with-last-vals"
+        ],
+        "blurb": "The run mode"
+      },
+      {
+        "name": "image",
+        "type": "GimpImage",
+        "blurb": "Input image"
+      },
+      {
+        "name": "file",
+        "type": "GFile",
+        "blurb": "The file to save or export the image in"
+      },
+      {
+        "name": "options",
+        "type": "GimpExportOptions",
+        "blurb": "Export option settings"
+      }
+    ],
+    "gimp-font-get-by-name": [
+      {
+        "name": "name",
+        "type": "gchararray",
+        "blurb": "The name of the font"
+      }
+    ],
+    "gimp-fonts-get-list": [
+      {
+        "name": "filter",
+        "type": "gchararray",
+        "blurb": "An optional regular expression used to filter the list"
+      }
+    ],
+    "gimp-get-images": [],
+    "gimp-image-autocrop": [
+      {
+        "name": "image",
+        "type": "GimpImage",
+        "blurb": "Input image)"
+      },
+      {
+        "name": "drawable",
+        "type": "GimpDrawable",
+        "blurb": "Input drawable"
+      }
+    ],
+    "gimp-image-convert-grayscale": [
+      {
+        "name": "image",
+        "type": "GimpImage",
+        "blurb": "The image"
+      }
+    ],
+    "gimp-image-convert-indexed": [
+      {
+        "name": "image",
+        "type": "GimpImage",
+        "blurb": "The image"
+      },
+      {
+        "name": "dither-type",
+        "type": "GimpConvertDitherType",
+        "default": "none",
+        "choices": [
+          "none",
+          "fs",
+          "fs-lowbleed",
+          "fixed"
+        ],
+        "blurb": "The dither type to use"
+      },
+      {
+        "name": "palette-type",
+        "type": "GimpConvertPaletteType",
+        "default": "generate",
+        "choices": [
+          "generate",
+          "web",
+          "mono",
+          "custom"
+        ],
+        "blurb": "The type of palette to use"
+      },
+      {
+        "name": "num-cols",
+        "type": "gint",
+        "minimum": -2147483648,
+        "maximum": 2147483647,
+        "default": "0",
+        "blurb": "The number of colors to quantize to, ignored unless (palette_type == GIMP_CONVERT_PALETTE_GENERATE)"
+      },
+      {
+        "name": "alpha-dither",
+        "type": "gboolean",
+        "default": "false",
+        "blurb": "Dither transparency to fake partial opacity"
+      },
+      {
+        "name": "remove-unused",
+        "type": "gboolean",
+        "default": "false",
+        "blurb": "Remove unused or duplicate color entries from final palette, ignored if (palette_type == GIMP_CONVERT_PALETTE_GENERATE)"
+      },
+      {
+        "name": "palette",
+        "type": "gchararray",
+        "blurb": "The name of the custom palette to use, ignored unless (palette_type == GIMP_CONVERT_PALETTE_CUSTOM)"
+      }
+    ],
+    "gimp-image-convert-rgb": [
+      {
+        "name": "image",
+        "type": "GimpImage",
+        "blurb": "The image"
+      }
+    ],
+    "gimp-image-crop": [
+      {
+        "name": "image",
+        "type": "GimpImage",
+        "blurb": "The image"
+      },
+      {
+        "name": "new-width",
+        "type": "gint",
+        "minimum": 1,
+        "maximum": 524288,
+        "default": "1",
+        "blurb": "New image width: (0 \u003c new_width \u003c= width)"
+      },
+      {
+        "name": "new-height",
+        "type": "gint",
+        "minimum": 1,
+        "maximum": 524288,
+        "default": "1",
+        "blurb": "New image height: (0 \u003c new_height \u003c= height)"
+      },
+      {
+        "name": "offx",
+        "type": "gint",
+        "minimum": 0,
+        "maximum": 2147483647,
+        "default": "0",
+        "blurb": "X offset: (0 \u003c= offx \u003c= (width - new_width))"
+      },
+      {
+        "name": "offy",
+        "type": "gint",
+        "minimum": 0,
+        "maximum": 2147483647,
+        "default": "0",
+        "blurb": "Y offset: (0 \u003c= offy \u003c= (height - new_height))"
+      }
+    ],
+    "gimp-image-delete": [
+      {
+        "name": "image",
+        "type": "GimpImage",
+        "blurb": "The image"
+      }
+    ],
+    "gimp-image-duplicate": [
+      {
+        "name": "image",
+        "type": "GimpImage",
+        "blurb": "The image"
+      }
+    ],
+    "gimp-image-flatten": [
+      {
+        "name": "image",
+        "type": "GimpImage",
+        "blurb": "The image"
+      }
+    ],
+    "gimp-image-flip": [
+      {
+        "name": "image",
+        "type": "GimpImage",
+        "blurb": "The image"
+      },
+      {
+        "name": "flip-type",
+        "type": "GimpOrientationType",
+        "default": "horizontal",
+        "choices": [
+          "horizontal",
+          "vertical",
+          "unknown"
+        ],
+        "blurb": "Type of flip"
+      }
+    ],
+    "gimp-image-get-base-type": [
+      {
+        "name": "image",
+        "type": "GimpImage",
+        "blurb": "The image"
+      }
+    ],
+    "gimp-image-get-file": [
+      {
+        "name": "image",
+        "type": "GimpImage",
+        "blurb": "The image"
+      }
+    ],
+    "gimp-image-get-height": [
+      {
+        "name": "image",
+        "type": "GimpImage",
+        "blurb": "The image"
+      }
+    ],
+    "gimp-image-get-layers": [
+      {
+        "name": "image",
+        "type": "GimpImage",
+        "blurb": "The image"
+      }
+    ],
+    "gimp-image-get-name": [
+      {
+        "name": "image",
+        "type": "GimpImage",
+        "blurb": "The image"
+      }
+    ],
+    "gimp-image-get-selected-layers": [
+      {
+        "name": "image",
+        "type": "GimpImage",
+        "blurb": "The image"
+      }
+    ],
+    "gimp-image-get-width": [
+      {
+        "name": "image",
+        "type": "GimpImage",
+        "blurb": "The image"
+      }
+    ],
+    "gimp-image-get-xcf-file": [
+      {
+        "name": "image",
+        "type": "GimpImage",
+        "blurb": "The image"
+      }
+    ],
+    "gimp-image-id-is-valid": [
+      {
+        "name": "image-id",
+        "type": "gint",
+        "minimum": -2147483648,
+        "maximum": 2147483647,
+        "default": "0",
+        "blurb": "The image ID to check"
+      }
+    ],
+    "gimp-image-insert-layer": [
+      {
+        "name": "image",
+        "type": "GimpImage",
+        "blurb": "The image"
+      },
+      {
+        "name": "layer",
+        "type": "GimpLayer",
+        "blurb": "The layer"
+      },
+      {
+        "name": "parent",
+        "type": "GimpLayer",
+        "blurb": "The parent layer"
+      },
+      {
+        "name": "position",
+        "type": "gint",
+        "minimum": -2147483648,
+        "maximum": 2147483647,
+        "default": "0",
+        "blurb": "The layer position"
+      }
+    ],
+    "gimp-image-is-dirty": [
+      {
+        "name": "image",
+        "type": "GimpImage",
+        "blurb": "The image"
+      }
+    ],
+    "gimp-image-merge-visible-layers": [
+      {
+        "name": "image",
+        "type": "GimpImage",
+        "blurb": "The image"
+      },
+      {
+        "name": "merge-type",
+        "type": "GimpMergeType",
+        "default": "expand-as-necessary",
+        "choices": [
+          "expand-as-necessary",
+          "clip-to-image",
+          "clip-to-bottom-layer",
+          "flatten-image"
+        ],
+        "blurb": "The type of merge"
+      }
+    ],
+    "gimp-image-new": [
+      {
+        "name": "width",
+        "type": "gint",
+        "minimum": 1,
+        "maximum": 524288,
+        "default": "1",
+        "blurb": "The width of the image"
+      },
+      {
+        "name": "height",
+        "type": "gint",
+        "minimum": 1,
+        "maximum": 524288,
+        "default": "1",
+        "blurb": "The height of the image"
+      },
+      {
+        "name": "type",
+        "type": "GimpImageBaseType",
+        "default": "rgb",
+        "choices": [
+          "rgb",
+          "gray",
+          "indexed"
+        ],
+        "blurb": "The type of image"
+      }
+    ],
+    "gimp-image-pick-color": [
+      {
+        "name": "image",
+        "type": "GimpImage",
+        "blurb": "The image"
+      },
+      {
+        "name": "drawables",
+        "type": "GimpCoreObjectArray",
+        "blurb": "The drawables to pick from"
+      },
+      {
+        "name": "x",
+        "type": "gdouble",
+        "minimum": -1.7976931348623157e+308,
+        "maximum": 1.7976931348623157e+308,
+        "default": "0",
+        "blurb": "x coordinate of upper-left corner of rectangle"
+      },
+      {
+        "name": "y",
+        "type": "gdouble",
+        "minimum": -1.7976931348623157e+308,
+        "maximum": 1.7976931348623157e+308,
+        "default": "0",
+        "blurb": "y coordinate of upper-left corner of rectangle"
+      },
+      {
+        "name": "sample-merged",
+        "type": "gboolean",
+        "default": "false",
+        "blurb": "Use the composite image, not the drawables"
+      },
+      {
+        "name": "sample-average",
+        "type": "gboolean",
+        "default": "false",
+        "blurb": "Average the color of all the pixels in a specified radius"
+      },
+      {
+        "name": "average-radius",
+        "type": "gdouble",
+        "minimum": 0,
+        "maximum": 1.7976931348623157e+308,
+        "default": "0",
+        "blurb": "The radius of pixels to average"
+      }
+    ],
+    "gimp-image-remove-layer": [
+      {
+        "name": "image",
+        "type": "GimpImage",
+        "blurb": "The image"
+      },
+      {
+        "name": "layer",
+        "type": "GimpLayer",
+        "blurb": "The layer"
+      }
+    ],
+    "gimp-image-reorder-item": [
+      {
+        "name": "image",
+        "type": "GimpImage",
+        "blurb": "The image"
+      },
+      {
+        "name": "item",
+        "type": "GimpItem",
+        "blurb": "The item to reorder"
+      },
+      {
+        "name": "parent",
+        "type": "GimpItem",
+        "blurb": "The new parent item"
+      },
+      {
+        "name": "position",
+        "type": "gint",
+        "minimum": -2147483648,
+        "maximum": 2147483647,
+        "default": "0",
+        "blurb": "The new position of the item"
+      }
+    ],
+    "gimp-image-resize": [
+      {
+        "name": "image",
+        "type": "GimpImage",
+        "blurb": "The image"
+      },
+      {
+        "name": "new-width",
+        "type": "gint",
+        "minimum": 1,
+        "maximum": 524288,
+        "default": "1",
+        "blurb": "New image width"
+      },
+      {
+        "name": "new-height",
+        "type": "gint",
+        "minimum": 1,
+        "maximum": 524288,
+        "default": "1",
+        "blurb": "New image height"
+      },
+      {
+        "name": "offx",
+        "type": "gint",
+        "minimum": -2147483648,
+        "maximum": 2147483647,
+        "default": "0",
+        "blurb": "x offset between upper left corner of old and new images: (new - old)"
+      },
+      {
+        "name": "offy",
+        "type": "gint",
+        "minimum": -2147483648,
+        "maximum": 2147483647,
+        "default": "0",
+        "blurb": "y offset between upper left corner of old and new images: (new - old)"
+      }
+    ],
+    "gimp-image-resize-to-layers": [
+      {
+        "name": "image",
+        "type": "GimpImage",
+        "blurb": "The image"
+      }
+    ],
+    "gimp-image-rotate": [
+      {
+        "name": "image",
+        "type": "GimpImage",
+        "blurb": "The image"
+      },
+      {
+        "name": "rotate-type",
+        "type": "GimpRotationType",
+        "default": "degrees90",
+        "choices": [
+          "degrees90",
+          "degrees180",
+          "degrees270"
+        ],
+        "blurb": "Angle of rotation"
+      }
+    ],
+    "gimp-image-scale": [
+      {
+        "name": "image",
+        "type": "GimpImage",
+        "blurb": "The image"
+      },
+      {
+        "name": "new-width",
+        "type": "gint",
+        "minimum": 1,
+        "maximum": 524288,
+        "default": "1",
+        "blurb": "New image width"
+      },
+      {
+        "name": "new-height",
+        "type": "gint",
+        "minimum": 1,
+        "maximum": 524288,
+        "default": "1",
+        "blurb": "New image height"
+      }
+    ],
+    "gimp-image-select-color": [
+      {
+        "name": "image",
+        "type": "GimpImage",
+        "blurb": "The affected image"
+      },
+      {
+        "name": "operation",
+        "type": "GimpChannelOps",
+        "default": "add",
+        "choices": [
+          "add",
+          "subtract",
+          "replace",
+          "intersect"
+        ],
+        "blurb": "The selection operation"
+      },
+      {
+        "name": "drawable",
+        "type": "GimpDrawable",
+        "blurb": "The affected drawable"
+      },
+      {
+        "name": "color",
+        "type": "GeglColor",
+        "blurb": "The color to select"
+      }
+    ],
+    "gimp-image-select-ellipse": [
+      {
+        "name": "image",
+        "type": "GimpImage",
+        "blurb": "The image"
+      },
+      {
+        "name": "operation",
+        "type": "GimpChannelOps",
+        "default": "add",
+        "choices": [
+          "add",
+          "subtract",
+          "replace",
+          "intersect"
+        ],
+        "blurb": "The selection operation"
+      },
+      {
+        "name": "x",
+        "type": "gdouble",
+        "minimum": -1.7976931348623157e+308,
+        "maximum": 1.7976931348623157e+308,
+        "default": "0",
+        "blurb": "x coordinate of upper-left corner of ellipse bounding box"
+      },
+      {
+        "name": "y",
+        "type": "gdouble",
+        "minimum": -1.7976931348623157e+308,
+        "maximum": 1.7976931348623157e+308,
+        "default": "0",
+        "blurb": "y coordinate of upper-left corner of ellipse bounding box"
+      },
+      {
+        "name": "width",
+        "type": "gdouble",
+        "minimum": 0,
+        "maximum": 1.7976931348623157e+308,
+        "default": "0",
+        "blurb": "The width of the ellipse"
+      },
+      {
+        "name": "height",
+        "type": "gdouble",
+        "minimum": 0,
+        "maximum": 1.7976931348623157e+308,
+        "default": "0",
+        "blurb": "The height of the ellipse"
+      }
+    ],
+    "gimp-image-select-rectangle": [
+      {
+        "name": "image",
+        "type": "GimpImage",
+        "blurb": "The image"
+      },
+      {
+        "name": "operation",
+        "type": "GimpChannelOps",
+        "default": "add",
+        "choices": [
+          "add",
+          "subtract",
+          "replace",
+          "intersect"
+        ],
+        "blurb": "The selection operation"
+      },
+      {
+        "name": "x",
+        "type": "gdouble",
+        "minimum": -1.7976931348623157e+308,
+        "maximum": 1.7976931348623157e+308,
+        "default": "0",
+        "blurb": "x coordinate of upper-left corner of rectangle"
+      },
+      {
+        "name": "y",
+        "type": "gdouble",
+        "minimum": -1.7976931348623157e+308,
+        "maximum": 1.7976931348623157e+308,
+        "default": "0",
+        "blurb": "y coordinate of upper-left corner of rectangle"
+      },
+      {
+        "name": "width",
+        "type": "gdouble",
+        "minimum": 0,
+        "maximum": 1.7976931348623157e+308,
+        "default": "0",
+        "blurb": "The width of the rectangle"
+      },
+      {
+        "name": "height",
+        "type": "gdouble",
+        "minimum": 0,
+        "maximum": 1.7976931348623157e+308,
+        "default": "0",
+        "blurb": "The height of the rectangle"
+      }
+    ],
+    "gimp-image-select-round-rectangle": [
+      {
+        "name": "image",
+        "type": "GimpImage",
+        "blurb": "The image"
+      },
+      {
+        "name": "operation",
+        "type": "GimpChannelOps",
+        "default": "add",
+        "choices": [
+          "add",
+          "subtract",
+          "replace",
+          "intersect"
+        ],
+        "blurb": "The selection operation"
+      },
+      {
+        "name": "x",
+        "type": "gdouble",
+        "minimum": -1.7976931348623157e+308,
+        "maximum": 1.7976931348623157e+308,
+        "default": "0",
+        "blurb": "x coordinate of upper-left corner of rectangle"
+      },
+      {
+        "name": "y",
+        "type": "gdouble",
+        "minimum": -1.7976931348623157e+308,
+        "maximum": 1.7976931348623157e+308,
+        "default": "0",
+        "blurb": "y coordinate of upper-left corner of rectangle"
+      },
+      {
+        "name": "width",
+        "type": "gdouble",
+        "minimum": 0,
+        "maximum": 1.7976931348623157e+308,
+        "default": "0",
+        "blurb": "The width of the rectangle"
+      },
+      {
+        "name": "height",
+        "type": "gdouble",
+        "minimum": 0,
+        "maximum": 1.7976931348623157e+308,
+        "default": "0",
+        "blurb": "The height of the rectangle"
+      },
+      {
+        "name": "corner-radius-x",
+        "type": "gdouble",
+        "minimum": 0,
+        "maximum": 524288,
+        "default": "0",
+        "blurb": "The corner radius in X direction"
+      },
+      {
+        "name": "corner-radius-y",
+        "type": "gdouble",
+        "minimum": 0,
+        "maximum": 524288,
+        "default": "0",
+        "blurb": "The corner radius in Y direction"
+      }
+    ],
+    "gimp-image-set-resolution": [
+      {
+        "name": "image",
+        "type": "GimpImage",
+        "blurb": "The image"
+      },
+      {
+        "name": "xresolution",
+        "type": "gdouble",
+        "minimum": -1.7976931348623157e+308,
+        "maximum": 1.7976931348623157e+308,
+        "default": "0",
+        "blurb": "The new image resolution in the x-axis, in dots per inch"
+      },
+      {
+        "name": "yresolution",
+        "type": "gdouble",
+        "minimum": -1.7976931348623157e+308,
+        "maximum": 1.7976931348623157e+308,
+        "default": "0",
+        "blurb": "The new image resolution in the y-axis, in dots per inch"
+      }
+    ],
+    "gimp-image-set-selected-layers": [
+      {
+        "name": "image",
+        "type": "GimpImage",
+        "blurb": "The image"
+      },
+      {
+        "name": "layers",
+        "type": "GimpCoreObjectArray",
+        "blurb": "The list of layers to select"
+      }
+    ],
+    "gimp-item-get-image": [
+      {
+        "name": "item",
+        "type": "GimpItem",
+        "blurb": "The item"
+      }
+    ],
+    "gimp-item-get-name": [
+      {
+        "name": "item",
+        "type": "GimpItem",
+        "blurb": "The item"
+      }
+    ],
+    "gimp-item-get-visible": [
+      {
+        "name": "item",
+        "type": "GimpItem",
+        "blurb": "The item"
+      }
+    ],
+    "gimp-item-id-is-layer": [
+      {
+        "name": "item-id",
+        "type": "gint",
+        "minimum": -2147483648,
+        "maximum": 2147483647,
+        "default": "0",
+        "blurb": "The item ID"
+      }
+    ],
+    "gimp-item-id-is-text-layer": [
+      {
+        "name": "item-id",
+        "type": "gint",
+        "minimum": -2147483648,
+        "maximum": 2147483647,
+        "default": "0",
+        "blurb": "The item ID"
+      }
+    ],
+    "gimp-item-set-name": [
+      {
+        "name": "item",
+        "type": "GimpItem",
+        "blurb": "The item"
+      },
+      {
+        "name": "name",
+        "type": "gchararray",
+        "blurb": "The new item name"
+      }
+    ],
+    "gimp-item-set-visible": [
+      {
+        "name": "item",
+        "type": "GimpItem",
+        "blurb": "The item"
+      },
+      {
+        "name": "visible",
+        "type": "gboolean",
+        "default": "false",
+        "blurb": "The new item visibility"
+      }
+    ],
+    "gimp-item-transform-rotate": [
+      {
+        "name": "item",
+        "type": "GimpItem",
+        "blurb": "The affected item"
+      },
+      {
+        "name": "angle",
+        "type": "gdouble",
+        "minimum": -1.7976931348623157e+308,
+        "maximum": 1.7976931348623157e+308,
+        "default": "0",
+        "blurb": "The angle of rotation (radians)"
+      },
+      {
+        "name": "auto-center",
+        "type": "gboolean",
+        "default": "false",
+        "blurb": "Whether to automatically rotate around the selection center"
+      },
+      {
+        "name": "center-x",
+        "type": "gdouble",
+        "minimum": -1.7976931348623157e+308,
+        "maximum": 1.7976931348623157e+308,
+        "default": "0",
+        "blurb": "The hor. coordinate of the center of rotation"
+      },
+      {
+        "name": "center-y",
+        "type": "gdouble",
+        "minimum": -1.7976931348623157e+308,
+        "maximum": 1.7976931348623157e+308,
+        "default": "0",
+        "blurb": "The vert. coordinate of the center of rotation"
+      }
+    ],
+    "gimp-item-transform-translate": [
+      {
+        "name": "item",
+        "type": "GimpItem",
+        "blurb": "The item"
+      },
+      {
+        "name": "off-x",
+        "type": "gdouble",
+        "minimum": -1.7976931348623157e+308,
+        "maximum": 1.7976931348623157e+308,
+        "default": "0",
+        "blurb": "Offset in x direction"
+      },
+      {
+        "name": "off-y",
+        "type": "gdouble",
+        "minimum": -1.7976931348623157e+308,
+        "maximum": 1.7976931348623157e+308,
+        "default": "0",
+        "blurb": "Offset in y direction"
+      }
+    ],
+    "gimp-layer-copy": [
+      {
+        "name": "layer",
+        "type": "GimpLayer",
+        "blurb": "The layer to copy"
+      }
+    ],
+    "gimp-layer-get-opacity": [
+      {
+        "name": "layer",
+        "type": "GimpLayer",
+        "blurb": "The layer"
+      }
+    ],
+    "gimp-layer-new": [
+      {
+        "name": "image",
+        "type": "GimpImage",
+        "blurb": "The image to which to add the layer"
+      },
+      {
+        "name": "name",
+        "type": "gchararray",
+        "blurb": "The layer name"
+      },
+      {
+        "name": "width",
+        "type": "gint",
+        "minimum": 1,
+        "maximum": 524288,
+        "default": "1",
+        "blurb": "The layer width"
+      },
+      {
+        "name": "height",
+        "type": "gint",
+        "minimum": 1,
+        "maximum": 524288,
+        "default": "1",
+        "blurb": "The layer height"
+      },
+      {
+        "name": "type",
+        "type": "GimpImageType",
+        "default": "rgb-image",
+        "choices": [
+          "rgb-image",
+          "rgba-image",
+          "gray-image",
+          "graya-image",
+          "indexed-image",
+          "indexeda-image"
+        ],
+        "blurb": "The layer type"
+      },
+      {
+        "name": "opacity",
+        "type": "gdouble",
+        "minimum": 0,
+        "maximum": 100,
+        "default": "0",
+        "blurb": "The layer opacity"
+      },
+      {
+        "name": "mode",
+        "type": "GimpLayerMode",
+        "default": "normal",
+        "choices": [
+          "normal-legacy",
+          "dissolve",
+          "behind-legacy",
+          "multiply-legacy",
+          "screen-legacy",
+          "overlay-legacy",
+          "difference-legacy",
+          "addition-legacy",
+          "subtract-legacy",
+          "darken-only-legacy",
+          "lighten-only-legacy",
+          "hsv-hue-legacy",
+          "hsv-saturation-legacy",
+          "hsl-color-legacy",
+          "hsv-value-legacy",
+          "divide-legacy",
+          "dodge-legacy",
+          "burn-legacy",
+          "hardlight-legacy",
+          "softlight-legacy",
+          "grain-extract-legacy",
+          "grain-merge-legacy",
+          "color-erase-legacy",
+          "overlay",
+          "lch-hue",
+          "lch-chroma",
+          "lch-color",
+          "lch-lightness",
+          "normal",
+          "behind",
+          "multiply",
+          "screen",
+          "difference",
+          "addition",
+          "subtract",
+          "darken-only",
+          "lighten-only",
+          "hsv-hue",
+          "hsv-saturation",
+          "hsl-color",
+          "hsv-value",
+          "divide",
+          "dodge",
+          "burn",
+          "hardlight",
+          "softlight",
+          "grain-extract",
+          "grain-merge",
+          "vivid-light",
+          "pin-light",
+          "linear-light",
+          "hard-mix",
+          "exclusion",
+          "linear-burn",
+          "luma-darken-only",
+          "luma-lighten-only",
+          "luminance",
+          "color-erase",
+          "erase",
+          "merge",
+          "split",
+          "pass-through",
+          "replace",
+          "overwrite"
+        ],
+        "blurb": "The layer combination mode"
+      }
+    ],
+    "gimp-layer-new-from-drawable": [
+      {
+        "name": "drawable",
+        "type": "GimpDrawable",
+        "blurb": "The source drawable from where the new layer is copied"
+      },
+      {
+        "name": "dest-image",
+        "type": "GimpImage",
+        "blurb": "The destination image to which to add the layer"
+      }
+    ],
+    "gimp-layer-scale": [
+      {
+        "name": "layer",
+        "type": "GimpLayer",
+        "blurb": "The layer"
+      },
+      {
+        "name": "new-width",
+        "type": "gint",
+        "minimum": 1,
+        "maximum": 524288,
+        "default": "1",
+        "blurb": "New layer width"
+      },
+      {
+        "name": "new-height",
+        "type": "gint",
+        "minimum": 1,
+        "maximum": 524288,
+        "default": "1",
+        "blurb": "New layer height"
+      },
+      {
+        "name": "local-origin",
+        "type": "gboolean",
+        "default": "false",
+        "blurb": "Use a local origin (as opposed to the image origin)"
+      }
+    ],
+    "gimp-layer-set-lock-alpha": [
+      {
+        "name": "layer",
+        "type": "GimpLayer",
+        "blurb": "The layer"
+      },
+      {
+        "name": "lock-alpha",
+        "type": "gboolean",
+        "default": "false",
+        "blurb": "The new layer's lock alpha channel setting"
+      }
+    ],
+    "gimp-layer-set-mode": [
+      {
+        "name": "layer",
+        "type": "GimpLayer",
+        "blurb": "The layer"
+      },
+      {
+        "name": "mode",
+        "type": "GimpLayerMode",
+        "default": "normal",
+        "choices": [
+          "normal-legacy",
+          "dissolve",
+          "behind-legacy",
+          "multiply-legacy",
+          "screen-legacy",
+          "overlay-legacy",
+          "difference-legacy",
+          "addition-legacy",
+          "subtract-legacy",
+          "darken-only-legacy",
+          "lighten-only-legacy",
+          "hsv-hue-legacy",
+          "hsv-saturation-legacy",
+          "hsl-color-legacy",
+          "hsv-value-legacy",
+          "divide-legacy",
+          "dodge-legacy",
+          "burn-legacy",
+          "hardlight-legacy",
+          "softlight-legacy",
+          "grain-extract-legacy",
+          "grain-merge-legacy",
+          "color-erase-legacy",
+          "overlay",
+          "lch-hue",
+          "lch-chroma",
+          "lch-color",
+          "lch-lightness",
+          "normal",
+          "behind",
+          "multiply",
+          "screen",
+          "difference",
+          "addition",
+          "subtract",
+          "darken-only",
+          "lighten-only",
+          "hsv-hue",
+          "hsv-saturation",
+          "hsl-color",
+          "hsv-value",
+          "divide",
+          "dodge",
+          "burn",
+          "hardlight",
+          "softlight",
+          "grain-extract",
+          "grain-merge",
+          "vivid-light",
+          "pin-light",
+          "linear-light",
+          "hard-mix",
+          "exclusion",
+          "linear-burn",
+          "luma-darken-only",
+          "luma-lighten-only",
+          "luminance",
+          "color-erase",
+          "erase",
+          "merge",
+          "split",
+          "pass-through",
+          "replace",
+          "overwrite"
+        ],
+        "blurb": "The new layer combination mode"
+      }
+    ],
+    "gimp-layer-set-offsets": [
+      {
+        "name": "layer",
+        "type": "GimpLayer",
+        "blurb": "The layer"
+      },
+      {
+        "name": "offx",
+        "type": "gint",
+        "minimum": -2147483648,
+        "maximum": 2147483647,
+        "default": "0",
+        "blurb": "Offset in x direction"
+      },
+      {
+        "name": "offy",
+        "type": "gint",
+        "minimum": -2147483648,
+        "maximum": 2147483647,
+        "default": "0",
+        "blurb": "Offset in y direction"
+      }
+    ],
+    "gimp-layer-set-opacity": [
+      {
+        "name": "layer",
+        "type": "GimpLayer",
+        "blurb": "The layer"
+      },
+      {
+        "name": "opacity",
+        "type": "gdouble",
+        "minimum": 0,
+        "maximum": 100,
+        "default": "0",
+        "blurb": "The new layer opacity"
+      }
+    ],
+    "gimp-paintbrush-default": [
+      {
+        "name": "drawable",
+        "type": "GimpDrawable",
+        "blurb": "The affected drawable"
+      },
+      {
+        "name": "strokes",
+        "type": "GimpDoubleArray",
+        "blurb": "Array of stroke coordinates: { s1.x, s1.y, s2.x, s2.y, ..., sn.x, sn.y }"
+      }
+    ],
+    "gimp-pencil": [
+      {
+        "name": "drawable",
+        "type": "GimpDrawable",
+        "blurb": "The affected drawable"
+      },
+      {
+        "name": "strokes",
+        "type": "GimpDoubleArray",
+        "blurb": "Array of stroke coordinates: { s1.x, s1.y, s2.x, s2.y, ..., sn.x, sn.y }"
+      }
+    ],
+    "gimp-resource-get-name": [
+      {
+        "name": "resource",
+        "type": "GimpResource",
+        "blurb": "The resource"
+      }
+    ],
+    "gimp-selection-all": [
+      {
+        "name": "image",
+        "type": "GimpImage",
+        "blurb": "The image"
+      }
+    ],
+    "gimp-selection-border": [
+      {
+        "name": "image",
+        "type": "GimpImage",
+        "blurb": "The image"
+      },
+      {
+        "name": "radius",
+        "type": "gint",
+        "minimum": 0,
+        "maximum": 2147483647,
+        "default": "0",
+        "blurb": "Radius of border (in pixels)"
+      }
+    ],
+    "gimp-selection-bounds": [
+      {
+        "name": "image",
+        "type": "GimpImage",
+        "blurb": "The image"
+      }
+    ],
+    "gimp-selection-feather": [
+      {
+        "name": "image",
+        "type": "GimpImage",
+        "blurb": "The image"
+      },
+      {
+        "name": "radius",
+        "type": "gdouble",
+        "minimum": 0,
+        "maximum": 1.7976931348623157e+308,
+        "default": "0",
+        "blurb": "Radius of feather (in pixels)"
+      }
+    ],
+    "gimp-selection-grow": [
+      {
+        "name": "image",
+        "type": "GimpImage",
+        "blurb": "The image"
+      },
+      {
+        "name": "steps",
+        "type": "gint",
+        "minimum": 0,
+        "maximum": 2147483647,
+        "default": "0",
+        "blurb": "Steps of grow (in pixels)"
+      }
+    ],
+    "gimp-selection-invert": [
+      {
+        "name": "image",
+        "type": "GimpImage",
+        "blurb": "The image"
+      }
+    ],
+    "gimp-selection-none": [
+      {
+        "name": "image",
+        "type": "GimpImage",
+        "blurb": "The image"
+      }
+    ],
+    "gimp-selection-sharpen": [
+      {
+        "name": "image",
+        "type": "GimpImage",
+        "blurb": "The image"
+      }
+    ],
+    "gimp-selection-shrink": [
+      {
+        "name": "image",
+        "type": "GimpImage",
+        "blurb": "The image"
+      },
+      {
+        "name": "steps",
+        "type": "gint",
+        "minimum": 0,
+        "maximum": 2147483647,
+        "default": "0",
+        "blurb": "Steps of shrink (in pixels)"
+      }
+    ],
+    "gimp-text-font": [
+      {
+        "name": "image",
+        "type": "GimpImage",
+        "blurb": "The image"
+      },
+      {
+        "name": "drawable",
+        "type": "GimpDrawable",
+        "blurb": "The affected drawable: (%NULL for a new text layer)"
+      },
+      {
+        "name": "x",
+        "type": "gdouble",
+        "minimum": -1.7976931348623157e+308,
+        "maximum": 1.7976931348623157e+308,
+        "default": "0",
+        "blurb": "The x coordinate for the left of the text bounding box"
+      },
+      {
+        "name": "y",
+        "type": "gdouble",
+        "minimum": -1.7976931348623157e+308,
+        "maximum": 1.7976931348623157e+308,
+        "default": "0",
+        "blurb": "The y coordinate for the top of the text bounding box"
+      },
+      {
+        "name": "text",
+        "type": "gchararray",
+        "blurb": "The text to generate (in UTF-8 encoding)"
+      },
+      {
+        "name": "border",
+        "type": "gint",
+        "minimum": -1,
+        "maximum": 2147483647,
+        "default": "-1",
+        "blurb": "The size of the border"
+      },
+      {
+        "name": "antialias",
+        "type": "gboolean",
+        "default": "false",
+        "blurb": "Antialiasing"
+      },
+      {
+        "name": "size",
+        "type": "gdouble",
+        "minimum": 0,
+        "maximum": 1.7976931348623157e+308,
+        "default": "0",
+        "blurb": "The size of text in pixels"
+      },
+      {
+        "name": "font",
+        "type": "GimpFont",
+        "blurb": "The font"
+      }
+    ],
+    "gimp-text-layer-get-color": [
+      {
+        "name": "layer",
+        "type": "GimpTextLayer",
+        "blurb": "The text layer."
+      }
+    ],
+    "gimp-text-layer-get-font-size": [
+      {
+        "name": "layer",
+        "type": "GimpTextLayer",
+        "blurb": "The text layer"
+      }
+    ],
+    "gimp-text-layer-get-text": [
+      {
+        "name": "layer",
+        "type": "GimpTextLayer",
+        "blurb": "The text layer"
+      }
+    ],
+    "gimp-text-layer-set-color": [
+      {
+        "name": "layer",
+        "type": "GimpTextLayer",
+        "blurb": "The text layer"
+      },
+      {
+        "name": "color",
+        "type": "GeglColor",
+        "blurb": "The color to use for the text"
+      }
+    ],
+    "gimp-text-layer-set-font": [
+      {
+        "name": "layer",
+        "type": "GimpTextLayer",
+        "blurb": "The text layer"
+      },
+      {
+        "name": "font",
+        "type": "GimpFont",
+        "blurb": "The new font to use"
+      }
+    ],
+    "gimp-text-layer-set-font-size": [
+      {
+        "name": "layer",
+        "type": "GimpTextLayer",
+        "blurb": "The text layer"
+      },
+      {
+        "name": "font-size",
+        "type": "gdouble",
+        "minimum": 0,
+        "maximum": 8192,
+        "default": "0",
+        "blurb": "The font size"
+      },
+      {
+        "name": "unit",
+        "type": "GimpUnit",
+        "blurb": "The unit to use for the font size"
+      }
+    ],
+    "gimp-text-layer-set-justification": [
+      {
+        "name": "layer",
+        "type": "GimpTextLayer",
+        "blurb": "The text layer"
+      },
+      {
+        "name": "justify",
+        "type": "GimpTextJustification",
+        "default": "left",
+        "choices": [
+          "left",
+          "right",
+          "center",
+          "fill"
+        ],
+        "blurb": "The justification for your text."
+      }
+    ],
+    "gimp-text-layer-set-text": [
+      {
+        "name": "layer",
+        "type": "GimpTextLayer",
+        "blurb": "The text layer"
+      },
+      {
+        "name": "text",
+        "type": "gchararray",
+        "blurb": "The new text to set"
+      }
+    ],
+    "gimp-version": []
+  },
+  "operations": {
+    "gegl:dropshadow": [
+      {
+        "name": "x",
+        "type": "gdouble",
+        "minimum": -1.7976931348623157e+308,
+        "maximum": 1.7976931348623157e+308,
+        "default": "20",
+        "blurb": "Horizontal shadow offset"
+      },
+      {
+        "name": "y",
+        "type": "gdouble",
+        "minimum": -1.7976931348623157e+308,
+        "maximum": 1.7976931348623157e+308,
+        "default": "20",
+        "blurb": "Vertical shadow offset"
+      },
+      {
+        "name": "radius",
+        "type": "gdouble",
+        "minimum": 0,
+        "maximum": 1.7976931348623157e+308,
+        "default": "10"
+      },
+      {
+        "name": "grow-shape",
+        "type": "gchararray",
+        "default": "circle",
+        "choices": [
+          "square",
+          "circle",
+          "diamond"
+        ],
+        "blurb": "The shape to expand or contract the shadow in"
+      },
+      {
+        "name": "grow-radius",
+        "type": "gdouble",
+        "minimum": -100,
+        "maximum": 100,
+        "default": "0",
+        "blurb": "The distance to expand the shadow before blurring; a negative value will contract the shadow instead"
+      },
+      {
+        "name": "color",
+        "type": "GeglColor",
+        "blurb": "The shadow's color (defaults to 'black')"
+      },
+      {
+        "name": "opacity",
+        "type": "gdouble",
+        "minimum": 0,
+        "maximum": 1,
+        "default": "0.5"
+      }
+    ],
+    "gegl:emboss": [
+      {
+        "name": "type",
+        "type": "gchararray",
+        "default": "emboss",
+        "choices": [
+          "emboss",
+          "bumpmap"
+        ],
+        "blurb": "Rendering type"
+      },
+      {
+        "name": "azimuth",
+        "type": "gdouble",
+        "minimum": 0,
+        "maximum": 360,
+        "default": "30",
+        "blurb": "Light angle (degrees)"
+      },
+      {
+        "name": "elevation",
+        "type": "gdouble",
+        "minimum": 0,
+        "maximum": 180,
+        "default": "45",
+        "blurb": "Elevation angle (degrees)"
+      },
+      {
+        "name": "depth",
+        "type": "gint",
+        "minimum": 1,
+        "maximum": 100,
+        "default": "20",
+        "blurb": "Filter width"
+      }
+    ],
+    "gegl:gaussian-blur": [
+      {
+        "name": "std-dev-x",
+        "type": "gdouble",
+        "minimum": 0,
+        "maximum": 1500,
+        "default": "1.5",
+        "blurb": "Standard deviation for the horizontal axis"
+      },
+      {
+        "name": "std-dev-y",
+        "type": "gdouble",
+        "minimum": 0,
+        "maximum": 1500,
+        "default": "1.5",
+        "blurb": "Standard deviation (spatial scale factor)"
+      },
+      {
+        "name": "filter",
+        "type": "gchararray",
+        "default": "auto",
+        "choices": [
+          "auto",
+          "fir",
+          "iir"
+        ],
+        "blurb": "How the gaussian kernel is discretized"
+      },
+      {
+        "name": "abyss-policy",
+        "type": "gchararray",
+        "default": "clamp",
+        "choices": [
+          "none",
+          "clamp",
+          "black",
+          "white"
+        ],
+        "blurb": "How image edges are handled"
+      },
+      {
+        "name": "clip-extent",
+        "type": "gboolean",
+        "default": "true",
+        "blurb": "Should the output extent be clipped to the input extent"
+      }
+    ],
+    "gegl:invert-gamma": [],
+    "gegl:noise-reduction": [
+      {
+        "name": "iterations",
+        "type": "gint",
+        "minimum": 0,
+        "maximum": 32,
+        "default": "4",
+        "blurb": "Controls the number of iterations; lower values give less plastic results"
+      }
+    ],
+    "gegl:noise-rgb": [
+      {
+        "name": "correlated",
+        "type": "gboolean",
+        "default": "false"
+      },
+      {
+        "name": "independent",
+        "type": "gboolean",
+        "default": "true",
+        "blurb": "Control amount of noise for each RGB channel separately"
+      },
+      {
+        "name": "linear",
+        "type": "gboolean",
+        "default": "true",
+        "blurb": "Operate on linearized RGB color data"
+      },
+      {
+        "name": "gaussian",
+        "type": "gboolean",
+        "default": "true",
+        "blurb": "Use a gaussian noise distribution, when unticked a linear noise distribution is used instead"
+      },
+      {
+        "name": "red",
+        "type": "gdouble",
+        "minimum": 0,
+        "maximum": 1,
+        "default": "0.2"
+      },
+      {
+        "name": "green",
+        "type": "gdouble",
+        "minimum": 0,
+        "maximum": 1,
+        "default": "0.2"
+      },
+      {
+        "name": "blue",
+        "type": "gdouble",
+        "minimum": 0,
+        "maximum": 1,
+        "default": "0.2"
+      },
+      {
+        "name": "alpha",
+        "type": "gdouble",
+        "minimum": 0,
+        "maximum": 1,
+        "default": "0"
+      },
+      {
+        "name": "seed",
+        "type": "guint",
+        "minimum": 0,
+        "maximum": 4294967295,
+        "default": "0"
+      }
+    ],
+    "gegl:pixelize": [
+      {
+        "name": "norm",
+        "type": "gchararray",
+        "default": "square",
+        "choices": [
+          "diamond",
+          "round",
+          "square"
+        ],
+        "blurb": "The shape of pixels"
+      },
+      {
+        "name": "size-x",
+        "type": "gint",
+        "minimum": 1,
+        "maximum": 2147483647,
+        "default": "16",
+        "blurb": "Width of blocks in pixels"
+      },
+      {
+        "name": "size-y",
+        "type": "gint",
+        "minimum": 1,
+        "maximum": 2147483647,
+        "default": "16",
+        "blurb": "Height of blocks in pixels"
+      },
+      {
+        "name": "offset-x",
+        "type": "gint",
+        "minimum": -2147483648,
+        "maximum": 2147483647,
+        "default": "0",
+        "blurb": "Horizontal offset of blocks in pixels"
+      },
+      {
+        "name": "offset-y",
+        "type": "gint",
+        "minimum": -2147483648,
+        "maximum": 2147483647,
+        "default": "0",
+        "blurb": "Vertical offset of blocks in pixels"
+      },
+      {
+        "name": "ratio-x",
+        "type": "gdouble",
+        "minimum": 0,
+        "maximum": 1,
+        "default": "1",
+        "blurb": "Horizontal size ratio of a pixel inside each block"
+      },
+      {
+        "name": "ratio-y",
+        "type": "gdouble",
+        "minimum": 0,
+        "maximum": 1,
+        "default": "1",
+        "blurb": "Vertical size ratio of a pixel inside each block"
+      },
+      {
+        "name": "background",
+        "type": "GeglColor",
+        "blurb": "Color used to fill the background"
+      }
+    ],
+    "gegl:unsharp-mask": [
+      {
+        "name": "std-dev",
+        "type": "gdouble",
+        "minimum": 0,
+        "maximum": 1500,
+        "default": "3",
+        "blurb": "Expressed as standard deviation, in pixels"
+      },
+      {
+        "name": "scale",
+        "type": "gdouble",
+        "minimum": 0,
+        "maximum": 300,
+        "default": "0.5",
+        "blurb": "Scaling factor for unsharp-mask, the strength of effect"
+      },
+      {
+        "name": "threshold",
+        "type": "gdouble",
+        "minimum": 0,
+        "maximum": 1,
+        "default": "0"
+      }
+    ],
+    "gegl:vignette": [
+      {
+        "name": "shape",
+        "type": "gchararray",
+        "default": "circle",
+        "choices": [
+          "circle",
+          "square",
+          "diamond",
+          "horizontal",
+          "vertical"
+        ]
+      },
+      {
+        "name": "color",
+        "type": "GeglColor",
+        "blurb": "Defaults to 'black', you can use transparency here to erase portions of an image"
+      },
+      {
+        "name": "radius",
+        "type": "gdouble",
+        "minimum": 0,
+        "maximum": 1.7976931348623157e+308,
+        "default": "1.2",
+        "blurb": "How far out vignetting goes as portion of half image diagonal"
+      },
+      {
+        "name": "softness",
+        "type": "gdouble",
+        "minimum": 0,
+        "maximum": 1,
+        "default": "0.8"
+      },
+      {
+        "name": "gamma",
+        "type": "gdouble",
+        "minimum": 0,
+        "maximum": 1.7976931348623157e+308,
+        "default": "2",
+        "blurb": "Falloff linearity"
+      },
+      {
+        "name": "proportion",
+        "type": "gdouble",
+        "minimum": 0,
+        "maximum": 1,
+        "default": "1",
+        "blurb": "How close we are to image proportions"
+      },
+      {
+        "name": "squeeze",
+        "type": "gdouble",
+        "minimum": -1,
+        "maximum": 1,
+        "default": "0",
+        "blurb": "Aspect ratio to use, -0.5 = 1:2, 0.0 = 1:1, 0.5 = 2:1, -1.0 = 1:inf 1.0 = inf:1, this is applied after proportion is taken into account, to directly use squeeze factor as proportions, set proportion to 0.0."
+      },
+      {
+        "name": "x",
+        "type": "gdouble",
+        "minimum": -1.7976931348623157e+308,
+        "maximum": 1.7976931348623157e+308,
+        "default": "0.5"
+      },
+      {
+        "name": "y",
+        "type": "gdouble",
+        "minimum": -1.7976931348623157e+308,
+        "maximum": 1.7976931348623157e+308,
+        "default": "0.5"
+      },
+      {
+        "name": "rotation",
+        "type": "gdouble",
+        "minimum": 0,
+        "maximum": 360,
+        "default": "0"
+      }
+    ],
+    "gimp:brightness-contrast": [
+      {
+        "name": "brightness",
+        "type": "gdouble",
+        "minimum": -1,
+        "maximum": 1,
+        "default": "0",
+        "blurb": "Brightness"
+      },
+      {
+        "name": "contrast",
+        "type": "gdouble",
+        "minimum": -1,
+        "maximum": 1,
+        "default": "0",
+        "blurb": "Contrast"
+      }
+    ],
+    "gimp:color-balance": [
+      {
+        "name": "range",
+        "type": "GimpTransferMode",
+        "default": "midtones",
+        "choices": [
+          "shadows",
+          "midtones",
+          "highlights"
+        ],
+        "blurb": "The affected range"
+      },
+      {
+        "name": "cyan-red",
+        "type": "gdouble",
+        "minimum": -1,
+        "maximum": 1,
+        "default": "0",
+        "blurb": "Cyan-Red"
+      },
+      {
+        "name": "magenta-green",
+        "type": "gdouble",
+        "minimum": -1,
+        "maximum": 1,
+        "default": "0",
+        "blurb": "Magenta-Green"
+      },
+      {
+        "name": "yellow-blue",
+        "type": "gdouble",
+        "minimum": -1,
+        "maximum": 1,
+        "default": "0",
+        "blurb": "Yellow-Blue"
+      },
+      {
+        "name": "preserve-luminosity",
+        "type": "gboolean",
+        "default": "true",
+        "blurb": "Preserve Luminosity"
+      }
+    ],
+    "gimp:desaturate": [
+      {
+        "name": "mode",
+        "type": "GimpDesaturateMode",
+        "default": "luminance",
+        "choices": [
+          "lightness",
+          "luma",
+          "average",
+          "luminance",
+          "value"
+        ],
+        "blurb": "Choose shade of gray based on"
+      }
+    ],
+    "gimp:hue-saturation": [
+      {
+        "name": "range",
+        "type": "GimpHueRange",
+        "default": "all",
+        "choices": [
+          "all",
+          "red",
+          "yellow",
+          "green",
+          "cyan",
+          "blue",
+          "magenta"
+        ],
+        "blurb": "The affected range"
+      },
+      {
+        "name": "hue",
+        "type": "gdouble",
+        "minimum": -1,
+        "maximum": 1,
+        "default": "0",
+        "blurb": "Hue"
+      },
+      {
+        "name": "saturation",
+        "type": "gdouble",
+        "minimum": -1,
+        "maximum": 1,
+        "default": "0",
+        "blurb": "Saturation"
+      },
+      {
+        "name": "lightness",
+        "type": "gdouble",
+        "minimum": -1,
+        "maximum": 1,
+        "default": "0",
+        "blurb": "Lightness"
+      },
+      {
+        "name": "overlap",
+        "type": "gdouble",
+        "minimum": 0,
+        "maximum": 1,
+        "default": "0",
+        "blurb": "Overlap"
+      }
+    ]
+  }
+}
