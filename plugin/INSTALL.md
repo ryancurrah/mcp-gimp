@@ -51,8 +51,8 @@ bar. A dialog offers the address to bind, defaulting to `127.0.0.1:9877` or to
 whatever `GIMP_MCP_BIND_HOST` and `GIMP_MCP_BIND_PORT` were set to when GIMP
 was launched. GIMP then confirms the address it is listening on.
 
-<img src="../docs/images/tools-menu.png" alt="GIMP's Tools menu with the MCP submenu open, showing Start MCP Server and Stop MCP Server" width="560">
-<img src="../docs/images/start-options.png" alt="The Start MCP Server dialog: Host 127.0.0.1, Port 9877, with Cancel and Start buttons" width="444">
+<img src="https://raw.githubusercontent.com/ryancurrah/mcp-gimp/main/docs/images/tools-menu.png" alt="GIMP's Tools menu with the MCP submenu open, showing Start MCP Server and Stop MCP Server" width="560">
+<img src="https://raw.githubusercontent.com/ryancurrah/mcp-gimp/main/docs/images/start-options.png" alt="The Start MCP Server dialog: Host 127.0.0.1, Port 9877, with Cancel and Start buttons" width="444">
 
 **Tools > MCP > Stop MCP Server** closes it again.
 
