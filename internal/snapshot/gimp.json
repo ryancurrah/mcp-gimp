@@ -795,29 +795,6 @@
         "blurb": "The drawable"
       }
     ],
-    "gimp-drawable-get-pixel": [
-      {
-        "name": "drawable",
-        "type": "GimpDrawable",
-        "blurb": "The drawable"
-      },
-      {
-        "name": "x-coord",
-        "type": "gint",
-        "minimum": 0,
-        "maximum": 2147483647,
-        "default": "0",
-        "blurb": "The x coordinate"
-      },
-      {
-        "name": "y-coord",
-        "type": "gint",
-        "minimum": 0,
-        "maximum": 2147483647,
-        "default": "0",
-        "blurb": "The y coordinate"
-      }
-    ],
     "gimp-drawable-get-width": [
       {
         "name": "drawable",

@@ -390,11 +390,15 @@ func (in *FillEllipseInput) SetDefaults() {
 // gradientFillDesc documents the gradient_fill tool.
 const gradientFillDesc = `Fill a layer or selection with a gradient.
 
+Points are image coordinates, as for every other tool, wherever the layer
+sits in the image.
+
 Parameters:
-- color1: Start color (default "black")
-- color2: End color (default "white")
-- x1, y1: Gradient start point (default top-left 0,0)
-- x2, y2: Gradient end point (defaults to bottom-right of image)
+- color1: Start color; the current foreground if omitted
+- color2: End color; the current background if omitted
+- x1, y1: Gradient start point in image pixels (default 0, 0, the top-left)
+- x2, y2: Gradient end point in image pixels; x2 defaults to the image's width
+  and y2 to 0, so by default the gradient runs left to right across the image
 - gradient_type: "linear" (default) or "radial"
 - layer_name: Target layer; defaults to active layer
 - layer_id: The layer_id another tool returned; unlike a name it survives renames. Identify the layer one way only
@@ -404,12 +408,12 @@ Returns status dict.`
 
 // GradientFillInput holds the arguments for the gradient_fill tool.
 type GradientFillInput struct {
-	Color1       *string  `json:"color1" jsonschema:"Start color (default \"black\")"`
-	Color2       *string  `json:"color2" jsonschema:"End color (default \"white\")"`
-	X1           float64  `json:"x1" jsonschema:"Gradient start point (default top-left 0,0)"`
-	Y1           float64  `json:"y1" jsonschema:"Gradient start point (default top-left 0,0)"`
-	X2           *float64 `json:"x2" jsonschema:"Gradient end point (defaults to bottom-right of image)"`
-	Y2           *float64 `json:"y2" jsonschema:"Gradient end point (defaults to bottom-right of image)"`
+	Color1       *string  `json:"color1" jsonschema:"Start color; the current foreground if omitted"`
+	Color2       *string  `json:"color2" jsonschema:"End color; the current background if omitted"`
+	X1           float64  `json:"x1" jsonschema:"Gradient start point, in image pixels (default 0)"`
+	Y1           float64  `json:"y1" jsonschema:"Gradient start point, in image pixels (default 0)"`
+	X2           *float64 `json:"x2" jsonschema:"Gradient end point, in image pixels (default: the image's width)"`
+	Y2           *float64 `json:"y2" jsonschema:"Gradient end point, in image pixels (default 0)"`
 	GradientType *string  `json:"gradient_type" jsonschema:"Gradient shape, by GIMP's name for it: \"linear\" (default), \"radial\", \"bilinear\", \"square\", \"conical-symmetric\", and others" enum:"linear,bilinear,radial,square,conical-symmetric,conical-asymmetric,shapeburst-angular,shapeburst-spherical,shapeburst-dimpled,spiral-clockwise,spiral-anticlockwise" gimp:"gimp-drawable-edit-gradient-fill.gradient-type"`
 	LayerName    *string  `json:"layer_name" jsonschema:"Target layer; defaults to active layer"`
 	LayerID      *int     `json:"layer_id" jsonschema:"Identify the layer by the layer_id another tool returned; it names the image too, so image_index is not consulted"`
@@ -438,8 +442,12 @@ or layer_id), or passing composite=False, reads that one layer's own pixel
 instead, which can differ: a layer covered by the stack still has its own
 color there.
 
+x and y are image coordinates in both cases, as for every other tool: reading
+one layer reads that layer where it sits in the image, and a point the layer
+does not cover is refused.
+
 Parameters:
-- x, y: Pixel coordinates
+- x, y: The pixel, in image coordinates
 - composite: Sample the flattened image (default true; false samples one layer)
 - layer_name: Layer to sample; defaults to the active layer, and implies composite=False
 - layer_id: The layer_id another tool returned; unlike a name it survives renames. Identify the layer one way only
@@ -450,8 +458,8 @@ with a 0-1 alpha.`
 
 // GetPixelColorInput holds the arguments for the get_pixel_color tool.
 type GetPixelColorInput struct {
-	X          int     `json:"x" jsonschema:"Pixel coordinates"`
-	Y          int     `json:"y" jsonschema:"Pixel coordinates"`
+	X          int     `json:"x" jsonschema:"The pixel's x, in image coordinates, also when one layer is read"`
+	Y          int     `json:"y" jsonschema:"The pixel's y, in image coordinates, also when one layer is read"`
 	ImageIndex int     `json:"image_index" jsonschema:"Target image index (default 0)"`
 	LayerName  *string `json:"layer_name" jsonschema:"Layer to sample from; defaults to active layer"`
 	LayerID    *int    `json:"layer_id" jsonschema:"Identify the layer by the layer_id another tool returned; it names the image too, so image_index is not consulted"`

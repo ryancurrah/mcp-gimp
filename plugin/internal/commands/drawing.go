@@ -534,18 +534,17 @@ func gradientFill(p Params) (any, error) {
 		}
 	}
 
-	width, height, err := imageSize(image)
+	width, _, err := imageSize(image)
 	if err != nil {
 		return nil, err
 	}
 
-	// Default to a gradient spanning the canvas left to right.
-	x2 := p.Float("x2", float64(width))
-	y2 := p.Float("y2", 0)
-
-	if !p.Has("x2") && !p.Has("y2") {
-		x2, y2 = float64(width), 0
+	offX, offY, err := drawableOffsets(drawable)
+	if err != nil {
+		return nil, err
 	}
+
+	x1, y1, x2, y2 := gradientLine(p, width, offX, offY)
 
 	if err := run("gimp-context-set-gradient-fg-bg-rgb", nil); err != nil {
 		return nil, err
@@ -559,8 +558,8 @@ func gradientFill(p Params) (any, error) {
 		"supersample-max-depth": 3,
 		"supersample-threshold": 0.2,
 		"dither":                true,
-		"x1":                    p.Float("x1", 0),
-		"y1":                    p.Float("y1", 0),
+		"x1":                    x1,
+		"y1":                    y1,
 		"x2":                    x2,
 		"y2":                    y2,
 	}); err != nil {
@@ -571,9 +570,22 @@ func gradientFill(p Params) (any, error) {
 		return nil, err
 	}
 
-	_ = height
-
 	return map[string]any{"status": "success", "gradient_type": p.String("gradient_type", "linear")}, nil
+}
+
+// gradientLine is gradient_fill's start and end point in the drawable's own
+// coordinates, which gimp-drawable-edit-gradient-fill takes.
+//
+// The tool's points are image coordinates, as every other tool's are, so the
+// drawable's offsets are taken off; on a layer placed away from the image's
+// corner they used to land that far from where they were asked for. The end
+// defaults to the image's right edge at the top, so the default is a
+// left-to-right gradient across the image.
+func gradientLine(p Params, imageWidth, offX, offY int) (x1, y1, x2, y2 float64) {
+	ox, oy := float64(offX), float64(offY)
+
+	return p.Float("x1", 0) - ox, p.Float("y1", 0) - oy,
+		p.Float("x2", float64(imageWidth)) - ox, p.Float("y2", 0) - oy
 }
 
 // getPixelColor samples one pixel.
@@ -591,28 +603,25 @@ func getPixelColor(p Params) (any, error) {
 	// stack hides still has its own colour there.
 	composite := p.Bool("composite", !p.Has("layer_name") && !p.Has("layer_id"))
 
-	var v gimpbridge.Value
-
-	if composite {
-		v, err = run1("gimp-image-pick-color", gimpbridge.Args{
-			"image":     image,
-			"drawables": gimpbridge.Items{drawable},
-			"x":         float64(x),
-			"y":         float64(y),
-			// sample-merged is what reads the composite rather than the
-			// drawables, which are then only used to satisfy the signature.
-			"sample-merged":  true,
-			"sample-average": false,
-			"average-radius": 0.0,
-		})
-	} else {
-		v, err = run1("gimp-drawable-get-pixel", gimpbridge.Args{
-			"drawable": drawable,
-			"x-coord":  x,
-			"y-coord":  y,
-		})
+	// GIMP fails a point off what it is reading without saying why, so the
+	// point is checked here first and the error says what was missed.
+	if err := checkPickPoint(image, drawable, x, y, composite); err != nil {
+		return nil, err
 	}
 
+	// x and y are image coordinates either way, as every other tool's are.
+	// With sample-merged off, gimp-image-pick-color reads the drawable itself
+	// at an image point, so a layer placed away from the image's corner is
+	// read where it sits rather than from its own corner.
+	v, err := run1("gimp-image-pick-color", gimpbridge.Args{
+		"image":          image,
+		"drawables":      gimpbridge.Items{drawable},
+		"x":              float64(x),
+		"y":              float64(y),
+		"sample-merged":  composite,
+		"sample-average": false,
+		"average-radius": 0.0,
+	})
 	if err != nil {
 		return nil, err
 	}
@@ -620,6 +629,46 @@ func getPixelColor(p Params) (any, error) {
 	css, _ := v.(string)
 
 	return map[string]any{"color": css, "x": x, "y": y, "composite": composite}, nil
+}
+
+// checkPickPoint refuses an image point off the image, or, when one layer is
+// read, off that layer.
+func checkPickPoint(image, drawable gimpbridge.ObjectID, x, y int, composite bool) error {
+	if composite {
+		width, height, err := imageSize(image)
+		if err != nil {
+			return err
+		}
+
+		if !inRect(x, y, 0, 0, width, height) {
+			return fmt.Errorf("(%d, %d) is outside the %dx%d image", x, y, width, height)
+		}
+
+		return nil
+	}
+
+	offX, offY, err := drawableOffsets(drawable)
+	if err != nil {
+		return err
+	}
+
+	width, height, err := drawableSize(drawable)
+	if err != nil {
+		return err
+	}
+
+	if !inRect(x, y, offX, offY, width, height) {
+		return fmt.Errorf("(%d, %d) is outside the layer, which covers (%d, %d) to (%d, %d) "+
+			"in image coordinates", x, y, offX, offY, offX+width, offY+height)
+	}
+
+	return nil
+}
+
+// inRect reports whether the pixel (x, y) lies in the width by height
+// rectangle whose top-left pixel is (left, top).
+func inRect(x, y, left, top, width, height int) bool {
+	return x >= left && y >= top && x < left+width && y < top+height
 }
 
 // getContextState reports the paint context the drawing commands inherit.
