@@ -46,13 +46,6 @@ func drawShapes(p Params) (any, error) {
 	}
 
 	return withUndoGroup(image, func() (any, error) {
-		// A shape has no antialias argument, so its edges are always smooth
-		// rather than whatever an earlier command left in the context.
-		if err := run("gimp-context-set-antialias",
-			gimpbridge.Args{"antialias": true}); err != nil {
-			return nil, err
-		}
-
 		alphaAdded := false
 
 		for i, s := range shapes {

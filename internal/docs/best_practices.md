@@ -125,8 +125,9 @@ select_none()                      # always clean up
 ```
 
 Keep edges sharp unless you specifically want a soft transition. Feathering
-is off by default; turn it on deliberately with `feather=true` and
-`feather_radius`.
+is off by default; give a select tool `feather` as a radius in pixels to
+soften that one selection. It applies to that selection only: shapes the fill
+tools and `draw_shapes` draw afterwards are always crisp.
 
 ## Layers
 

@@ -172,10 +172,12 @@ func paintedPathResult(path gimpbridge.ObjectID, keep, alphaAdded bool,
 // fillPathArea selects a path, fills it, reads the filled area's bounds and
 // clears the selection again, on the error path too. Bounds are nil when the
 // path encloses no area, such as a single straight line.
-func fillPathArea(image, drawable, path gimpbridge.ObjectID, fill string,
+func fillPathArea(image, drawable, path gimpbridge.ObjectID, fill string, antialias bool,
 ) (alphaAdded bool, bounds map[string]any, err error) {
-	if err := run("gimp-image-select-item", gimpbridge.Args{
-		"image": image, "operation": "replace", "item": path,
+	if err := selectForDrawing(antialias, func() error {
+		return run("gimp-image-select-item", gimpbridge.Args{
+			"image": image, "operation": "replace", "item": path,
+		})
 	}); err != nil {
 		return false, nil, err
 	}
@@ -217,7 +219,7 @@ func paintPath(image, drawable, path gimpbridge.ObjectID, spec paintSpec,
 	}
 
 	if spec.Fill != "" {
-		if alphaAdded, bounds, err = fillPathArea(image, drawable, path, spec.Fill); err != nil {
+		if alphaAdded, bounds, err = fillPathArea(image, drawable, path, spec.Fill, spec.Antialias); err != nil {
 			return false, nil, err
 		}
 	}
@@ -261,7 +263,8 @@ func drawPath(p Params) (any, error) {
 		path, err := withPath(image, p.String("d", ""), keep, func(path gimpbridge.ObjectID) error {
 			if fill != "" {
 				var err error
-				if alphaAdded, bounds, err = fillPathArea(image, drawable, path, fill); err != nil {
+				alphaAdded, bounds, err = fillPathArea(image, drawable, path, fill, p.Bool("antialias", true))
+				if err != nil {
 					return err
 				}
 			}
@@ -303,11 +306,6 @@ func fillPath(p Params) (any, error) {
 	}
 
 	return withUndoGroup(image, func() (any, error) {
-		if err := run("gimp-context-set-antialias",
-			gimpbridge.Args{"antialias": p.Bool("antialias", true)}); err != nil {
-			return nil, err
-		}
-
 		keep := p.Bool("keep_path", false)
 
 		var (
@@ -341,15 +339,13 @@ func selectPath(p Params) (any, error) {
 		return nil, err
 	}
 
-	if err := applySelectionContext(p); err != nil {
-		return nil, err
-	}
-
 	keep := p.Bool("keep_path", false)
 
 	path, err := withPath(image, p.String("d", ""), keep, func(path gimpbridge.ObjectID) error {
-		return run("gimp-image-select-item", gimpbridge.Args{
-			"image": image, "operation": p.String("operation", "replace"), "item": path,
+		return withSelectionContext(p, func() error {
+			return run("gimp-image-select-item", gimpbridge.Args{
+				"image": image, "operation": p.String("operation", "replace"), "item": path,
+			})
 		})
 	})
 	if err != nil {
@@ -445,12 +441,10 @@ func pathToSelection(p Params) (any, error) {
 		return nil, err
 	}
 
-	if err := applySelectionContext(p); err != nil {
-		return nil, err
-	}
-
-	if err := run("gimp-image-select-item", gimpbridge.Args{
-		"image": image, "operation": p.String("operation", "replace"), "item": path,
+	if err := withSelectionContext(p, func() error {
+		return run("gimp-image-select-item", gimpbridge.Args{
+			"image": image, "operation": p.String("operation", "replace"), "item": path,
+		})
 	}); err != nil {
 		return nil, err
 	}

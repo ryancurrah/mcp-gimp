@@ -123,6 +123,36 @@ int mcp_apply_gegl (gint32        drawable_id,
                     int           text_n,
                     char        **err);
 
+/* Pixel access ------------------------------------------------------------ */
+
+/* mcp_read_pixels copies a rectangle of a drawable, in the drawable's own
+ * coordinates, into out as straight R'G'B'A floats in the drawable's colour
+ * space, row by row. out holds width * height * 4 floats. Outside the
+ * drawable the nearest edge pixel is repeated.
+ *
+ * Returns 0 on failure and sets *err to a message the caller must free. */
+int mcp_read_pixels (gint32  drawable_id,
+                     int     x,
+                     int     y,
+                     int     width,
+                     int     height,
+                     float  *out,
+                     char  **err);
+
+/* mcp_write_pixels replaces a rectangle of a drawable with pixels in the
+ * format mcp_read_pixels produces. It goes through the drawable's shadow
+ * buffer, as a filter does, so the change is one undo step and an active
+ * selection limits it.
+ *
+ * Returns 0 on failure and sets *err to a message the caller must free. */
+int mcp_write_pixels (gint32       drawable_id,
+                      int          x,
+                      int          y,
+                      int          width,
+                      int          height,
+                      const float *in,
+                      char       **err);
+
 /* mcp_describe_op lists what an operation will accept, one property per line:
  *
  *   name \t type \t min \t max \t default \t choices \t blurb

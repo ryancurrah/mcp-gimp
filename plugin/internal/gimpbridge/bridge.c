@@ -1032,6 +1032,105 @@ mcp_apply_gegl (gint32        drawable_id,
   return 1;
 }
 
+/* Pixel access ------------------------------------------------------------ */
+
+/* pixel_format is the format pixels cross the bridge in: straight R'G'B'A
+ * floats in the drawable's own colour space, so a colour-managed image is not
+ * converted to sRGB and back on the way. */
+static const Babl *
+pixel_format (GimpDrawable *drawable)
+{
+  return babl_format_with_space ("R'G'B'A float",
+                                 babl_format_get_space (gimp_drawable_get_format (drawable)));
+}
+
+static GimpDrawable *
+pixel_drawable (gint32 drawable_id, char **err)
+{
+  GimpItem *item = gimp_item_get_by_id (drawable_id);
+
+  if (item == NULL || ! GIMP_IS_DRAWABLE (item))
+    {
+      *err = g_strdup_printf ("no drawable with id %d", drawable_id);
+
+      return NULL;
+    }
+
+  return GIMP_DRAWABLE (item);
+}
+
+int
+mcp_read_pixels (gint32  drawable_id,
+                 int     x,
+                 int     y,
+                 int     width,
+                 int     height,
+                 float  *out,
+                 char  **err)
+{
+  GimpDrawable *drawable;
+  GeglBuffer   *buffer;
+
+  *err = NULL;
+
+  drawable = pixel_drawable (drawable_id, err);
+  if (drawable == NULL)
+    return 0;
+
+  buffer = gimp_drawable_get_buffer (drawable);
+  gegl_buffer_get (buffer, GEGL_RECTANGLE (x, y, width, height), 1.0,
+                   pixel_format (drawable), out,
+                   GEGL_AUTO_ROWSTRIDE, GEGL_ABYSS_CLAMP);
+  g_object_unref (buffer);
+
+  return 1;
+}
+
+int
+mcp_write_pixels (gint32       drawable_id,
+                  int          x,
+                  int          y,
+                  int          width,
+                  int          height,
+                  const float *in,
+                  char       **err)
+{
+  GimpDrawable *drawable;
+  GeglBuffer   *buffer;
+  GeglBuffer   *shadow;
+
+  *err = NULL;
+
+  drawable = pixel_drawable (drawable_id, err);
+  if (drawable == NULL)
+    return 0;
+
+  buffer = gimp_drawable_get_buffer (drawable);
+  shadow = gimp_drawable_get_shadow_buffer (drawable);
+
+  /* Merging takes the whole shadow inside the selection bounds, and a fresh
+   * shadow's contents are undefined, so it starts as a copy of the drawable
+   * and only the rectangle is replaced. */
+  gegl_buffer_copy (buffer, NULL, GEGL_ABYSS_NONE, shadow, NULL);
+  gegl_buffer_set (shadow, GEGL_RECTANGLE (x, y, width, height), 0,
+                   pixel_format (drawable), in, GEGL_AUTO_ROWSTRIDE);
+
+  g_object_unref (buffer);
+  /* Releasing the shadow flushes its tiles to GIMP, which the merge reads. */
+  g_object_unref (shadow);
+
+  if (! gimp_drawable_merge_shadow (drawable, TRUE))
+    {
+      *err = g_strdup ("GIMP could not merge the new pixels into the drawable");
+
+      return 0;
+    }
+
+  gimp_drawable_update (drawable, x, y, width, height);
+
+  return 1;
+}
+
 /* Result inspection ------------------------------------------------------- */
 
 int

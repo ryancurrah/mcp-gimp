@@ -1885,29 +1885,6 @@
         "blurb": "The vert. coordinate of the center of rotation"
       }
     ],
-    "gimp-item-transform-translate": [
-      {
-        "name": "item",
-        "type": "GimpItem",
-        "blurb": "The item"
-      },
-      {
-        "name": "off-x",
-        "type": "gdouble",
-        "minimum": -1.7976931348623157e+308,
-        "maximum": 1.7976931348623157e+308,
-        "default": "0",
-        "blurb": "Offset in x direction"
-      },
-      {
-        "name": "off-y",
-        "type": "gdouble",
-        "minimum": -1.7976931348623157e+308,
-        "maximum": 1.7976931348623157e+308,
-        "default": "0",
-        "blurb": "Offset in y direction"
-      }
-    ],
     "gimp-layer-add-alpha": [
       {
         "name": "layer",

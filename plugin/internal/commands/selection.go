@@ -19,34 +19,42 @@ func init() {
 	register("get_selection_bounds", getSelectionBounds)
 }
 
-// applySelectionContext sets the feather and antialias state that the shape
-// selection procedures read.
+// withSelectionContext runs selectFn with the feather and antialias state
+// that the shape selection procedures read, on a copy of the context.
 //
 // These are not arguments of gimp-image-select-*; GIMP takes them from the
-// paint context, so they have to be set before the selection is made.
+// paint context, so they have to be set before the selection is made. Setting
+// them on a copy keeps them from outliving the call: a feather left in the
+// context used to soften every shape the fill tools drew afterwards.
 //
 // The select tools document feather as a radius in pixels, 0 meaning none,
 // so it is read as a number: reading it as a bool made every documented
 // value the fallback and the argument was silently ignored.
-func applySelectionContext(p Params) error {
-	radius := p.Float("feather", 0)
-	feather := radius > 0
+func withSelectionContext(p Params, selectFn func() error) error {
+	return withContext(func() error {
+		radius := p.Float("feather", 0)
+		feather := radius > 0
 
-	if err := run("gimp-context-set-feather",
-		gimpbridge.Args{"feather": feather}); err != nil {
-		return err
-	}
-
-	if feather {
-		if err := run("gimp-context-set-feather-radius", gimpbridge.Args{
-			"feather-radius-x": radius, "feather-radius-y": radius,
-		}); err != nil {
+		if err := run("gimp-context-set-feather",
+			gimpbridge.Args{"feather": feather}); err != nil {
 			return err
 		}
-	}
 
-	return run("gimp-context-set-antialias",
-		gimpbridge.Args{"antialias": p.Bool("antialias", true)})
+		if feather {
+			if err := run("gimp-context-set-feather-radius", gimpbridge.Args{
+				"feather-radius-x": radius, "feather-radius-y": radius,
+			}); err != nil {
+				return err
+			}
+		}
+
+		if err := run("gimp-context-set-antialias",
+			gimpbridge.Args{"antialias": p.Bool("antialias", true)}); err != nil {
+			return err
+		}
+
+		return selectFn()
+	})
 }
 
 // selectRectangle selects a rectangular region.
@@ -58,17 +66,15 @@ func selectRectangle(p Params) (any, error) {
 
 	op := p.String("operation", "replace")
 
-	if err := applySelectionContext(p); err != nil {
-		return nil, err
-	}
-
-	if err := run("gimp-image-select-rectangle", gimpbridge.Args{
-		"image":     image,
-		"operation": op,
-		"x":         p.Float("x", 0),
-		"y":         p.Float("y", 0),
-		"width":     p.Float("width", 0),
-		"height":    p.Float("height", 0),
+	if err := withSelectionContext(p, func() error {
+		return run("gimp-image-select-rectangle", gimpbridge.Args{
+			"image":     image,
+			"operation": op,
+			"x":         p.Float("x", 0),
+			"y":         p.Float("y", 0),
+			"width":     p.Float("width", 0),
+			"height":    p.Float("height", 0),
+		})
 	}); err != nil {
 		return nil, err
 	}
@@ -84,22 +90,19 @@ func selectRoundedRectangle(p Params) (any, error) {
 	}
 
 	op := p.String("operation", "replace")
-
-	if err := applySelectionContext(p); err != nil {
-		return nil, err
-	}
-
 	radius := p.Float("radius", 0)
 
-	if err := run(selectRoundRectangleProc, gimpbridge.Args{
-		"image":           image,
-		"operation":       op,
-		"x":               p.Float("x", 0),
-		"y":               p.Float("y", 0),
-		"width":           p.Float("width", 0),
-		"height":          p.Float("height", 0),
-		"corner-radius-x": p.Float("radius_x", radius),
-		"corner-radius-y": p.Float("radius_y", radius),
+	if err := withSelectionContext(p, func() error {
+		return run(selectRoundRectangleProc, gimpbridge.Args{
+			"image":           image,
+			"operation":       op,
+			"x":               p.Float("x", 0),
+			"y":               p.Float("y", 0),
+			"width":           p.Float("width", 0),
+			"height":          p.Float("height", 0),
+			"corner-radius-x": p.Float("radius_x", radius),
+			"corner-radius-y": p.Float("radius_y", radius),
+		})
 	}); err != nil {
 		return nil, err
 	}
@@ -116,17 +119,15 @@ func selectEllipse(p Params) (any, error) {
 
 	op := p.String("operation", "replace")
 
-	if err := applySelectionContext(p); err != nil {
-		return nil, err
-	}
-
-	if err := run("gimp-image-select-ellipse", gimpbridge.Args{
-		"image":     image,
-		"operation": op,
-		"x":         p.Float("x", 0),
-		"y":         p.Float("y", 0),
-		"width":     p.Float("width", 0),
-		"height":    p.Float("height", 0),
+	if err := withSelectionContext(p, func() error {
+		return run("gimp-image-select-ellipse", gimpbridge.Args{
+			"image":     image,
+			"operation": op,
+			"x":         p.Float("x", 0),
+			"y":         p.Float("y", 0),
+			"width":     p.Float("width", 0),
+			"height":    p.Float("height", 0),
+		})
 	}); err != nil {
 		return nil, err
 	}
@@ -148,21 +149,20 @@ func selectByColor(p Params) (any, error) {
 		return nil, fmt.Errorf("color is required")
 	}
 
-	if err := run("gimp-context-set-antialias",
-		gimpbridge.Args{"antialias": p.Bool("antialias", true)}); err != nil {
-		return nil, err
-	}
+	// select_by_color takes no feather, so the helper turns it off rather
+	// than letting one set elsewhere soften the selection.
+	if err := withSelectionContext(p, func() error {
+		if err := run("gimp-context-set-sample-threshold-int",
+			gimpbridge.Args{"sample-threshold": p.Int("threshold", 15)}); err != nil {
+			return err
+		}
 
-	if err := run("gimp-context-set-sample-threshold-int",
-		gimpbridge.Args{"sample-threshold": p.Int("threshold", 15)}); err != nil {
-		return nil, err
-	}
-
-	if err := run("gimp-image-select-color", gimpbridge.Args{
-		"image":     image,
-		"operation": op,
-		"drawable":  drawable,
-		"color":     gimpbridge.Color(color),
+		return run("gimp-image-select-color", gimpbridge.Args{
+			"image":     image,
+			"operation": op,
+			"drawable":  drawable,
+			"color":     gimpbridge.Color(color),
+		})
 	}); err != nil {
 		return nil, err
 	}

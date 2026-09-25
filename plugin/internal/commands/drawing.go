@@ -209,7 +209,9 @@ func strokeShape(p Params, selectProc string) (any, error) {
 			return nil, err
 		}
 
-		if err := run(selectProc, shapeSelectArgs(p, selectProc, image)); err != nil {
+		if err := selectForDrawing(true, func() error {
+			return run(selectProc, shapeSelectArgs(p, selectProc, image))
+		}); err != nil {
 			return nil, err
 		}
 
@@ -239,6 +241,9 @@ type paintSpec struct {
 	Stroke      string
 	StrokeWidth float64
 	Join        string
+	// Antialias smooths the shape's edges and its outline. Only fill_path
+	// takes it as an argument; every other shape is smooth.
+	Antialias bool
 }
 
 // paintSpecFrom reads the fill and outline arguments the fill tools and
@@ -251,6 +256,7 @@ func paintSpecFrom(p Params) (paintSpec, error) {
 		Stroke:      p.String("stroke_color", ""),
 		StrokeWidth: p.Float("stroke_width", 2),
 		Join:        p.String("stroke_join", "round"),
+		Antialias:   p.Bool("antialias", true),
 	}
 
 	if spec.Fill == "" && spec.Stroke == "" {
@@ -297,6 +303,28 @@ func withContext(fn func() error) error {
 	}
 
 	return errors.Join(fn(), run("gimp-context-pop", nil))
+}
+
+// selectForDrawing makes a drawing command's own selection with feathering
+// off, on a copy of the context.
+//
+// GIMP's select procedures take feather and antialias from the context
+// rather than as arguments, so without this a feather set earlier, by a
+// select tool, call_api or the GUI, would soften the shape being drawn.
+func selectForDrawing(antialias bool, selectFn func() error) error {
+	return withContext(func() error {
+		if err := run("gimp-context-set-feather",
+			gimpbridge.Args{"feather": false}); err != nil {
+			return err
+		}
+
+		if err := run("gimp-context-set-antialias",
+			gimpbridge.Args{"antialias": antialias}); err != nil {
+			return err
+		}
+
+		return selectFn()
+	})
 }
 
 // fillSelectionWith fills the selection on drawable, or clears it to
@@ -378,6 +406,11 @@ func applyOutline(spec paintSpec) error {
 		return err
 	}
 
+	if err := run("gimp-context-set-antialias",
+		gimpbridge.Args{"antialias": spec.Antialias}); err != nil {
+		return err
+	}
+
 	return run("gimp-context-set-line-cap-style", gimpbridge.Args{"cap-style": "round"})
 }
 
@@ -398,7 +431,9 @@ func paintShape(image, drawable gimpbridge.ObjectID, p Params, selectProc string
 		}
 	}
 
-	if err := run(selectProc, shapeSelectArgs(p, selectProc, image)); err != nil {
+	if err := selectForDrawing(spec.Antialias, func() error {
+		return run(selectProc, shapeSelectArgs(p, selectProc, image))
+	}); err != nil {
 		return false, err
 	}
 

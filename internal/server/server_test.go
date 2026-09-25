@@ -914,3 +914,63 @@ func TestDrawShapesRefusesBadShapes(t *testing.T) {
 		}
 	}
 }
+
+func TestWarpRegionSendsVectorsAsObjects(t *testing.T) {
+	// The plug-in reads each vector's keys by name. It used to read a flat
+	// list of numbers, so every call failed.
+	f := &fakeGimp{}
+	cs := connect(t, f.start(t))
+
+	callTool(t, cs, "warp_region", map[string]any{"vectors": []any{
+		map[string]any{"x": 215, "y": 355, "dx": 5, "dy": -8},
+		map[string]any{"x": 295, "y": 355, "dx": -5, "dy": -8, "radius": 18, "amount": 0.45},
+	}})
+
+	vectors, ok := f.args()["vectors"].([]any)
+	if !ok || len(vectors) != 2 {
+		t.Fatalf("vectors = %#v, want a list of two objects", f.args()["vectors"])
+	}
+
+	first, _ := vectors[0].(map[string]any)
+	if first["x"] != float64(215) || first["radius"] != float64(40) || first["amount"] != 0.3 {
+		t.Errorf("first vector = %#v, want x 215 with the default radius 40 and amount 0.3", first)
+	}
+
+	second, _ := vectors[1].(map[string]any)
+	if second["radius"] != float64(18) || second["amount"] != 0.45 {
+		t.Errorf("second vector = %#v, want the radius and amount it was given", second)
+	}
+}
+
+func TestWarpRegionBoundsEachVector(t *testing.T) {
+	f := &fakeGimp{}
+	cs := connect(t, f.start(t))
+
+	items, ok := propertyOf(t, schemaOf(t, cs, "warp_region"), "vectors")["items"].(map[string]any)
+	if !ok {
+		t.Fatal("warp_region's vectors has no item schema")
+	}
+
+	if required, _ := items["required"].([]any); !slices.Equal(required, []any{"x", "y", "dx", "dy"}) {
+		t.Errorf("vector required = %#v, want x, y, dx, dy", items["required"])
+	}
+
+	amount := propertyOf(t, items, "amount")
+	if amount["minimum"] != float64(0) || amount["maximum"] != float64(1) || amount["default"] != 0.3 {
+		t.Errorf("amount minimum/maximum/default = %#v/%#v/%#v, want 0/1/0.3",
+			amount["minimum"], amount["maximum"], amount["default"])
+	}
+
+	for name, vector := range map[string]map[string]any{
+		"amount over 1":  {"x": 1, "y": 1, "dx": 1, "dy": 1, "amount": 2},
+		"radius under 1": {"x": 1, "y": 1, "dx": 1, "dy": 1, "radius": 0},
+		"missing dy":     {"x": 1, "y": 1, "dx": 1},
+	} {
+		res, err := cs.CallTool(t.Context(), &mcp.CallToolParams{
+			Name: "warp_region", Arguments: map[string]any{"vectors": []any{vector}},
+		})
+		if err == nil && !res.IsError {
+			t.Errorf("%s: warp_region succeeded, want a validation error", name)
+		}
+	}
+}
