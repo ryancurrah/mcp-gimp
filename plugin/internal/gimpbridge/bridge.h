@@ -151,7 +151,12 @@ double      mcp_value_double  (GimpValueArray *values, int i);
 int         mcp_value_bool    (GimpValueArray *values, int i);
 /* mcp_value_string returns a newly allocated string the caller must free. */
 char       *mcp_value_string  (GimpValueArray *values, int i);
+/* mcp_value_object_id returns the id of an object value, or -1 when the value
+ * is not an object or not one of the GIMP types that carry an id. */
 gint32      mcp_value_object_id (GimpValueArray *values, int i);
+/* mcp_value_enum_nick returns an enum value's nick, GIMP's own name for it,
+ * or NULL when the value is not an enum. Caller frees. */
+char       *mcp_value_enum_nick (GimpValueArray *values, int i);
 /* mcp_value_color_css returns the colour as "rgba(r,g,b,a)" with components in
  * 0-255 / 0-1. Caller frees. */
 char       *mcp_value_color_css (GimpValueArray *values, int i);

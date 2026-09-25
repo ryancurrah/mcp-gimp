@@ -49,9 +49,9 @@ Parameters:
 - cap: Line end style: "round" (default), "butt" or "square"
 - join: Corner style: "round" (default), "miter" or "bevel"
 - antialias: Smooth the stroke's edges (default true)
-- keep_path: Leave the path in the image's Paths dockable so it can be edited
-  in the GUI; it starts hidden there (default false: the temporary path is
-  removed after stroking)
+- keep_path: Leave the path visible in the image's Paths dockable so it can
+  be edited in the GUI (default false: the temporary path is removed after
+  stroking)
 - layer_name: Target layer; defaults to active layer
 - layer_id: The layer_id another tool returned; unlike a name it survives renames. Identify the layer one way only
 - image_index: Target image index (default 0)

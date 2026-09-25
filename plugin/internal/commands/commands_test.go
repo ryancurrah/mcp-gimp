@@ -414,3 +414,15 @@ func TestExportFormatFollowsTheExtension(t *testing.T) {
 		}
 	}
 }
+
+func TestBaseTypeNameUsesTheEnumNick(t *testing.T) {
+	// The bridge returns GimpImageBaseType by nick. It used to arrive as a
+	// string the number switch could not read, so every image was "RGB".
+	for v, want := range map[any]string{
+		"rgb": "RGB", "gray": "GRAY", "indexed": "INDEXED", "": "UNKNOWN", int64(1): "UNKNOWN",
+	} {
+		if got := baseTypeName(v); got != want {
+			t.Errorf("baseTypeName(%#v) = %q, want %q", v, got, want)
+		}
+	}
+}

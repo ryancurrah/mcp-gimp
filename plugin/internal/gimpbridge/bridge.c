@@ -1123,7 +1123,37 @@ mcp_object_id (GObject *object)
 gint32
 mcp_value_object_id (GimpValueArray *values, int i)
 {
-  return mcp_object_id (g_value_get_object (gimp_value_array_index (values, i)));
+  GValue *v = gimp_value_array_index (values, i);
+
+  /* Enums and other non-objects reach here too; asking GObject for an object
+   * out of those would log a critical and return NULL. */
+  if (!G_VALUE_HOLDS_OBJECT (v))
+    return -1;
+
+  return mcp_object_id (g_value_get_object (v));
+}
+
+char *
+mcp_value_enum_nick (GimpValueArray *values, int i)
+{
+  GValue     *v    = gimp_value_array_index (values, i);
+  GType       type = G_VALUE_TYPE (v);
+  GEnumClass *klass;
+  GEnumValue *found;
+  char       *nick = NULL;
+
+  if (!G_TYPE_IS_ENUM (type))
+    return NULL;
+
+  klass = g_type_class_ref (type);
+  found = g_enum_get_value (klass, g_value_get_enum (v));
+
+  if (found != NULL)
+    nick = g_strdup (found->value_nick);
+
+  g_type_class_unref (klass);
+
+  return nick;
 }
 
 static char *

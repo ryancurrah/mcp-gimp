@@ -85,6 +85,12 @@ func withPath(image gimpbridge.ObjectID, d string, keep bool,
 	err = fn(path)
 
 	if keep {
+		// GIMP imports a path hidden; a kept one is meant to be seen and
+		// edited, so it is shown on the canvas like a path drawn in the GUI.
+		if err == nil {
+			err = run("gimp-item-set-visible", gimpbridge.Args{"item": path, "visible": true})
+		}
+
 		return path, err
 	}
 

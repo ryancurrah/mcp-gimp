@@ -135,19 +135,17 @@ func getImageMetadata(p Params) (any, error) {
 }
 
 // baseTypeName renders GimpImageBaseType as the strings the protocol uses.
+//
+// The bridge returns an enum by its nick ("rgb", "gray", "indexed"); the
+// protocol spells the mode in upper case. Mapping numbers here instead is
+// how the mode read as "RGB" for every image.
 func baseTypeName(v gimpbridge.Value) string {
-	n, _ := v.(int64)
-
-	switch n {
-	case 0:
-		return "RGB"
-	case 1:
-		return "GRAY"
-	case 2:
-		return "INDEXED"
-	default:
+	nick, _ := v.(string)
+	if nick == "" {
 		return "UNKNOWN"
 	}
+
+	return strings.ToUpper(nick)
 }
 
 // baseTypeFor maps a colour mode name onto GimpImageBaseType, reporting

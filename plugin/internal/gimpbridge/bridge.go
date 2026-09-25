@@ -410,6 +410,12 @@ func readValue(values *C.GimpValueArray, i C.int) Value {
 		return out
 
 	default:
+		// Enums come back by nick, the same spelling the bridge accepts for
+		// enum arguments, so a value read from GIMP can be sent straight back.
+		if nick := C.mcp_value_enum_nick(values, i); nick != nil {
+			return goStringFree(nick)
+		}
+
 		// Images, layers, channels and other GObjects come back as ids.
 		if id := int32(C.mcp_value_object_id(values, i)); id >= 0 {
 			return ObjectID(id)
