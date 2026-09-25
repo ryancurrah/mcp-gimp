@@ -501,6 +501,32 @@
         "blurb": "The interpolation type"
       }
     ],
+    "gimp-context-set-line-cap-style": [
+      {
+        "name": "cap-style",
+        "type": "GimpCapStyle",
+        "default": "butt",
+        "choices": [
+          "butt",
+          "round",
+          "square"
+        ],
+        "blurb": "The line cap style setting"
+      }
+    ],
+    "gimp-context-set-line-join-style": [
+      {
+        "name": "join-style",
+        "type": "GimpJoinStyle",
+        "default": "miter",
+        "choices": [
+          "miter",
+          "round",
+          "bevel"
+        ],
+        "blurb": "The line join style setting"
+      }
+    ],
     "gimp-context-set-line-width": [
       {
         "name": "line-width",
@@ -711,6 +737,18 @@
         "maximum": 1.7976931348623157e+308,
         "default": "0",
         "blurb": "The y coordinate of this gradient's ending point"
+      }
+    ],
+    "gimp-drawable-edit-stroke-item": [
+      {
+        "name": "drawable",
+        "type": "GimpDrawable",
+        "blurb": "The drawable to stroke to"
+      },
+      {
+        "name": "item",
+        "type": "GimpItem",
+        "blurb": "The item to stroke"
       }
     ],
     "gimp-drawable-edit-stroke-selection": [
@@ -1120,6 +1158,13 @@
         "blurb": "The image"
       }
     ],
+    "gimp-image-get-paths": [
+      {
+        "name": "image",
+        "type": "GimpImage",
+        "blurb": "The image"
+      }
+    ],
     "gimp-image-get-selected-layers": [
       {
         "name": "image",
@@ -1149,6 +1194,38 @@
         "maximum": 2147483647,
         "default": "0",
         "blurb": "The image ID to check"
+      }
+    ],
+    "gimp-image-import-paths-from-string": [
+      {
+        "name": "image",
+        "type": "GimpImage",
+        "blurb": "The image"
+      },
+      {
+        "name": "string",
+        "type": "gchararray",
+        "blurb": "A string that must be a complete and valid SVG document."
+      },
+      {
+        "name": "length",
+        "type": "gint",
+        "minimum": -2147483648,
+        "maximum": 2147483647,
+        "default": "0",
+        "blurb": "Number of bytes in string or -1 if the string is NULL terminated."
+      },
+      {
+        "name": "merge",
+        "type": "gboolean",
+        "default": "false",
+        "blurb": "Merge paths into a single path object."
+      },
+      {
+        "name": "scale",
+        "type": "gboolean",
+        "default": "false",
+        "blurb": "Scale the SVG to image dimensions."
       }
     ],
     "gimp-image-insert-layer": [
@@ -1289,6 +1366,18 @@
         "name": "layer",
         "type": "GimpLayer",
         "blurb": "The layer"
+      }
+    ],
+    "gimp-image-remove-path": [
+      {
+        "name": "image",
+        "type": "GimpImage",
+        "blurb": "The image"
+      },
+      {
+        "name": "path",
+        "type": "GimpPath",
+        "blurb": "The path object"
       }
     ],
     "gimp-image-reorder-item": [
@@ -1483,6 +1572,30 @@
         "blurb": "The height of the ellipse"
       }
     ],
+    "gimp-image-select-item": [
+      {
+        "name": "image",
+        "type": "GimpImage",
+        "blurb": "The image"
+      },
+      {
+        "name": "operation",
+        "type": "GimpChannelOps",
+        "default": "add",
+        "choices": [
+          "add",
+          "subtract",
+          "replace",
+          "intersect"
+        ],
+        "blurb": "The desired operation with current selection"
+      },
+      {
+        "name": "item",
+        "type": "GimpItem",
+        "blurb": "The item to render to the selection"
+      }
+    ],
     "gimp-image-select-rectangle": [
       {
         "name": "image",
@@ -1658,6 +1771,16 @@
       }
     ],
     "gimp-item-id-is-layer": [
+      {
+        "name": "item-id",
+        "type": "gint",
+        "minimum": -2147483648,
+        "maximum": 2147483647,
+        "default": "0",
+        "blurb": "The item ID"
+      }
+    ],
+    "gimp-item-id-is-path": [
       {
         "name": "item-id",
         "type": "gint",

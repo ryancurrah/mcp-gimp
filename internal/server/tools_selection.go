@@ -66,7 +66,7 @@ type SelectRectangleInput struct {
 	Width      int     `json:"width" jsonschema:"Dimensions of the selection"`
 	Height     int     `json:"height" jsonschema:"Dimensions of the selection"`
 	Operation  *string `json:"operation" jsonschema:"\"replace\" (default), \"add\", \"subtract\", \"intersect\"" enum:"replace,add,subtract,intersect" gimp:"gimp-image-select-rectangle.operation"`
-	Feather    float64 `json:"feather" jsonschema:"Feather radius in pixels (default 0 = no feather)"`
+	Feather    float64 `json:"feather" jsonschema:"Feather radius in pixels (default 0 = no feather)" minimum:"0" maximum:"1000" gimp:"gimp-context-set-feather-radius.feather-radius-x gimp-context-set-feather-radius.feather-radius-y"`
 	ImageIndex int     `json:"image_index" jsonschema:"Target image index (default 0)"`
 }
 
@@ -101,7 +101,7 @@ type SelectRoundedRectangleInput struct {
 	RadiusX    float64 `json:"radius_x" jsonschema:"Horizontal corner radius (defaults to radius)"`
 	RadiusY    float64 `json:"radius_y" jsonschema:"Vertical corner radius (defaults to radius)"`
 	Operation  *string `json:"operation" jsonschema:"\"replace\" (default), \"add\", \"subtract\", \"intersect\"" enum:"replace,add,subtract,intersect" gimp:"gimp-image-select-round-rectangle.operation"`
-	Feather    float64 `json:"feather" jsonschema:"Feather radius in pixels (default 0 = no feather)"`
+	Feather    float64 `json:"feather" jsonschema:"Feather radius in pixels (default 0 = no feather)" minimum:"0" maximum:"1000" gimp:"gimp-context-set-feather-radius.feather-radius-x gimp-context-set-feather-radius.feather-radius-y"`
 	ImageIndex int     `json:"image_index" jsonschema:"Target image index (default 0)"`
 }
 
@@ -131,7 +131,7 @@ type SelectEllipseInput struct {
 	Width      int     `json:"width" jsonschema:"Bounding box dimensions"`
 	Height     int     `json:"height" jsonschema:"Bounding box dimensions"`
 	Operation  *string `json:"operation" jsonschema:"\"replace\" (default), \"add\", \"subtract\", \"intersect\"" enum:"replace,add,subtract,intersect" gimp:"gimp-image-select-ellipse.operation"`
-	Feather    float64 `json:"feather" jsonschema:"Feather radius in pixels (default 0)"`
+	Feather    float64 `json:"feather" jsonschema:"Feather radius in pixels (default 0 = no feather)" minimum:"0" maximum:"1000" gimp:"gimp-context-set-feather-radius.feather-radius-x gimp-context-set-feather-radius.feather-radius-y"`
 	ImageIndex int     `json:"image_index" jsonschema:"Target image index (default 0)"`
 }
 

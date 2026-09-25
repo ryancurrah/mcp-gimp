@@ -24,9 +24,13 @@ func init() {
 //
 // These are not arguments of gimp-image-select-*; GIMP takes them from the
 // paint context, so they have to be set before the selection is made.
+//
+// The select tools document feather as a radius in pixels, 0 meaning none,
+// so it is read as a number: reading it as a bool made every documented
+// value the fallback and the argument was silently ignored.
 func applySelectionContext(p Params) error {
-	radius := p.Float("feather_radius", 0)
-	feather := p.Bool("feather", false) || radius > 0
+	radius := p.Float("feather", 0)
+	feather := radius > 0
 
 	if err := run("gimp-context-set-feather",
 		gimpbridge.Args{"feather": feather}); err != nil {
@@ -254,7 +258,7 @@ func getSelectionBounds(p Params) (any, error) {
 }
 
 // selectionState reads the current selection bounds.
-func selectionState(image gimpbridge.ObjectID) (any, error) {
+func selectionState(image gimpbridge.ObjectID) (map[string]any, error) {
 	out, err := gimpbridge.Run("gimp-selection-bounds", gimpbridge.Args{"image": image})
 	if err != nil {
 		return nil, err

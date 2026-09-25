@@ -222,6 +222,7 @@ func registerTools(r *registrar) {
 	registerCoreTools(r)
 	registerBitmapTools(r)
 	registerDrawingTools(r)
+	registerPathTools(r)
 	registerAdjustTools(r)
 	registerEffectsTools(r)
 	registerTransformTools(r)

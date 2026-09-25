@@ -19,7 +19,7 @@ import (
 )
 
 // totalTools is the number of tools the server exposes.
-const totalTools = 88
+const totalTools = 93
 
 // fakeGimp records the params each command received and replies with a canned
 // results payload.
@@ -173,6 +173,7 @@ func TestEveryToolIsRegistered(t *testing.T) {
 		"draw_line", "add_text", "apply_drop_shadow", "export_icon_sizes",
 		"list_images", "get_histogram", "fill_rounded_rectangle",
 		"draw_rounded_rectangle", "select_rounded_rectangle", "rotate_layer",
+		"draw_path", "fill_path", "select_path", "list_paths", "path_to_selection",
 	} {
 		if !slices.Contains(names, want) {
 			t.Errorf("tool %s is missing", want)
@@ -700,4 +701,79 @@ func TestConstrainedArgumentsExistAndAgreeWithDefaults(t *testing.T) {
 	}
 
 	t.Logf("checked %d enum/default pairs", checked)
+}
+
+func TestPathDefaultsAreSentOnTheWire(t *testing.T) {
+	// The plug-in reads width with Float and the rest with String and Bool,
+	// so each has to arrive with the documented default and JSON type.
+	f := &fakeGimp{}
+	cs := connect(t, f.start(t))
+
+	callTool(t, cs, "draw_path", map[string]any{"d": "M 100 300 C 150 100 350 100 400 300"})
+
+	if got := f.command(); got != "draw_path" {
+		t.Errorf("command = %q, want draw_path", got)
+	}
+
+	args := f.args()
+	for key, want := range map[string]any{
+		"d":           "M 100 300 C 150 100 350 100 400 300",
+		"width":       float64(2),
+		"cap":         "round",
+		"join":        "round",
+		"antialias":   true,
+		"keep_path":   false,
+		"image_index": float64(0),
+	} {
+		if got := args[key]; got != want {
+			t.Errorf("params[%q] = %#v, want %#v", key, got, want)
+		}
+	}
+
+	// No colour means the current foreground, so it goes as null.
+	if got, ok := args["color"]; !ok || got != nil {
+		t.Errorf("params[\"color\"] = %#v, want null", got)
+	}
+}
+
+func TestFillPathRequiresColor(t *testing.T) {
+	f := &fakeGimp{}
+	cs := connect(t, f.start(t))
+
+	res, err := cs.CallTool(t.Context(), &mcp.CallToolParams{
+		Name: "fill_path", Arguments: map[string]any{"d": "M 200 200 Q 300 50 400 200 Z"},
+	})
+	if err == nil && !res.IsError {
+		t.Fatal("fill_path without color succeeded, want a validation error")
+	}
+}
+
+func TestSelectionFeatherIsANumber(t *testing.T) {
+	// feather is documented as a radius in pixels. The plug-in used to read it
+	// as a bool, so the documented value never reached GIMP; it now reads the
+	// number, and every select tool sends it the same way.
+	f := &fakeGimp{}
+	cs := connect(t, f.start(t))
+
+	for tool, args := range map[string]map[string]any{
+		"select_rectangle":         {"x": 0, "y": 0, "width": 10, "height": 10, "feather": 6},
+		"select_ellipse":           {"x": 0, "y": 0, "width": 10, "height": 10, "feather": 6},
+		"select_rounded_rectangle": {"x": 0, "y": 0, "width": 10, "height": 10, "feather": 6},
+		"select_path":              {"d": "M 0 0 L 10 0 L 10 10 Z", "feather": 6},
+		"path_to_selection":        {"path_id": 7, "feather": 6},
+	} {
+		callTool(t, cs, tool, args)
+
+		if got := f.args()["feather"]; got != float64(6) {
+			t.Errorf("%s: params[\"feather\"] = %#v, want 6", tool, got)
+		}
+	}
+
+	res, err := cs.CallTool(t.Context(), &mcp.CallToolParams{
+		Name:      "select_rectangle",
+		Arguments: map[string]any{"x": 0, "y": 0, "width": 10, "height": 10, "feather": 5000},
+	})
+	if err == nil && !res.IsError {
+		t.Fatal("feather=5000 succeeded, want a validation error: GIMP's radius stops at 1000")
+	}
 }

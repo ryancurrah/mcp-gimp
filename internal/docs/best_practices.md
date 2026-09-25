@@ -47,6 +47,31 @@ fill_ellipse(x=180, y=40, width=100, height=100, color="#22aa55")
 `line_width` to set its weight. Do not try to fill a shape by stroking it
 repeatedly — the result has seams and soft edges.
 
+## Curves
+
+Anything curved is an SVG path. Give the path tools a `d` string in image
+pixels and GIMP does the geometry; the temporary path is removed afterwards.
+
+```
+draw_path(d="M 100 300 C 150 100 350 100 400 300", width=8, color="#0044cc")
+fill_path(d="M 200 200 Q 300 50 400 200 Z", color="#dd5500")
+```
+
+To outline a curved shape, select it and fill twice:
+
+```
+select_path(d="M 60 360 C 120 250 220 250 280 360 Z")
+modify_selection(operation="grow", amount=6)
+fill_selection(color="#222222")
+modify_selection(operation="shrink", amount=6)
+fill_selection(color="#88cc88")
+select_none()
+```
+
+`keep_path=True` leaves the path in the Paths dockable and returns its
+`path_id`; `list_paths` and `path_to_selection` work with paths drawn in the
+GUI too.
+
 ## Colors
 
 Every colour argument takes a CSS string:
