@@ -2,12 +2,15 @@ package server
 
 import (
 	"fmt"
+	"maps"
 	"math"
+	"reflect"
 	"slices"
 	"strconv"
 	"strings"
 	"testing"
 
+	"github.com/google/jsonschema-go/jsonschema"
 	"github.com/modelcontextprotocol/go-sdk/mcp"
 
 	"github.com/ryancurrah/mcp-gimp/internal/gimp"
@@ -333,5 +336,74 @@ func TestCompareToGIMPAcceptsDeliberateChoices(t *testing.T) {
 		if problems := compareToGIMP(tc.p, tc.scale, tc.prop); len(problems) > 0 {
 			t.Errorf("%s: unexpected problems %v", tc.name, problems)
 		}
+	}
+}
+
+// nestedOuter and nestedInner stand in for a tool whose argument is a list of
+// objects, like draw_shapes.
+type nestedOuter struct {
+	Items []nestedInner `json:"items" jsonschema:"the list"`
+}
+
+type nestedInner struct {
+	Kind  string   `json:"kind" jsonschema:"what it is" enum:"a,b"`
+	Width *float64 `json:"width,omitempty" jsonschema:"how wide" minimum:"0" maximum:"10" project:"a test bound"`
+}
+
+func (in *nestedInner) SetDefaults() {
+	if in.Width == nil {
+		in.Width = ptr(3.0)
+	}
+}
+
+func TestNestedArgumentsAreDeclared(t *testing.T) {
+	// A constraint on a list element's field has to reach the specs, or
+	// TestConstraintsHaveASource and TestConstraintsMatchGIMP never see it.
+	specs, err := argSpecs(reflect.TypeFor[nestedOuter]())
+	if err != nil {
+		t.Fatalf("argSpecs: %v", err)
+	}
+
+	byName := map[string]argSpec{}
+	for _, s := range specs {
+		byName[s.Name] = s
+	}
+
+	kind, ok := byName["items[].kind"]
+	if !ok {
+		t.Fatalf("no spec for items[].kind; got %v", slices.Collect(maps.Keys(byName)))
+	}
+
+	if !slices.Equal(kind.Enum, []string{"a", "b"}) || len(kind.GIMP) != 0 || kind.Project != "" {
+		t.Errorf("items[].kind = %+v, want enum a,b with no source, for the source check to catch", kind)
+	}
+
+	if width := byName["items[].width"]; string(width.Default) != "3" {
+		t.Errorf("items[].width default = %s, want 3 from the element's SetDefaults", width.Default)
+	}
+}
+
+func TestNestedConstraintsAreAdvertised(t *testing.T) {
+	s, err := jsonschema.For[nestedOuter](nil)
+	if err != nil {
+		t.Fatalf("infer: %v", err)
+	}
+
+	specs, err := argSpecs(reflect.TypeFor[nestedOuter]())
+	if err != nil {
+		t.Fatalf("argSpecs: %v", err)
+	}
+
+	if err := applySpecs(s, specs); err != nil {
+		t.Fatalf("applySpecs: %v", err)
+	}
+
+	width := s.Properties["items"].Items.Properties["width"]
+	if width.Maximum == nil || *width.Maximum != 10 || string(width.Default) != "3" {
+		t.Errorf("items[].width schema = max %v default %s, want max 10 default 3", width.Maximum, width.Default)
+	}
+
+	if kind := s.Properties["items"].Items.Properties["kind"]; len(kind.Enum) != 2 {
+		t.Errorf("items[].kind enum = %v, want a,b", kind.Enum)
 	}
 }

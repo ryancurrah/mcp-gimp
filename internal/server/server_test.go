@@ -6,6 +6,7 @@ import (
 	"io"
 	"maps"
 	"net"
+	"reflect"
 	"slices"
 	"strings"
 	"sync"
@@ -19,7 +20,7 @@ import (
 )
 
 // totalTools is the number of tools the server exposes.
-const totalTools = 93
+const totalTools = 92
 
 // fakeGimp records the params each command received and replies with a canned
 // results payload.
@@ -174,9 +175,18 @@ func TestEveryToolIsRegistered(t *testing.T) {
 		"list_images", "get_histogram", "fill_rounded_rectangle",
 		"draw_rounded_rectangle", "select_rounded_rectangle", "rotate_layer",
 		"draw_path", "fill_path", "select_path", "list_paths", "path_to_selection",
+		"draw_shapes",
 	} {
 		if !slices.Contains(names, want) {
 			t.Errorf("tool %s is missing", want)
+		}
+	}
+
+	// GIMP 3 has no procedure that steps the undo stack, so these could only
+	// ever fail.
+	for _, gone := range []string{"undo", "redo"} {
+		if slices.Contains(names, gone) {
+			t.Errorf("tool %s is registered, but GIMP 3 cannot step the undo stack", gone)
 		}
 	}
 }
@@ -775,5 +785,132 @@ func TestSelectionFeatherIsANumber(t *testing.T) {
 	})
 	if err == nil && !res.IsError {
 		t.Fatal("feather=5000 succeeded, want a validation error: GIMP's radius stops at 1000")
+	}
+}
+
+func TestFillOutlineDefaultsAreSentOnTheWire(t *testing.T) {
+	// The plug-in sets the line width and join for every outline, so the
+	// documented defaults have to arrive with the call, and an unset
+	// stroke_color has to arrive as null, meaning no outline.
+	f := &fakeGimp{}
+	cs := connect(t, f.start(t))
+
+	for _, tc := range []struct {
+		tool string
+		args map[string]any
+	}{
+		{"fill_ellipse", map[string]any{"x": 1, "y": 2, "width": 30, "height": 40, "color": "red"}},
+		{"fill_rectangle", map[string]any{"x": 1, "y": 2, "width": 30, "height": 40, "color": "red"}},
+		{"fill_rounded_rectangle", map[string]any{"x": 1, "y": 2, "width": 30, "height": 40, "color": "red"}},
+		{"fill_path", map[string]any{"d": "M 0 0 L 10 0 L 5 9 Z", "color": "red"}},
+	} {
+		callTool(t, cs, tc.tool, tc.args)
+
+		args := f.args()
+		if got, ok := args["stroke_color"]; !ok || got != nil {
+			t.Errorf("%s: stroke_color = %#v, want null", tc.tool, got)
+		}
+
+		if args["stroke_width"] != float64(2) || args["stroke_join"] != "round" {
+			t.Errorf("%s: stroke_width/stroke_join = %#v/%#v, want 2/round",
+				tc.tool, args["stroke_width"], args["stroke_join"])
+		}
+	}
+}
+
+func TestDrawPathSendsFill(t *testing.T) {
+	f := &fakeGimp{}
+	cs := connect(t, f.start(t))
+
+	callTool(t, cs, "draw_path", map[string]any{"d": "M 0 0 L 10 0 L 5 9 Z", "fill": "#88cc88"})
+
+	if got := f.args()["fill"]; got != "#88cc88" {
+		t.Errorf("fill = %#v, want #88cc88", got)
+	}
+}
+
+// shapeSchema returns the schema draw_shapes advertises for one shape.
+func shapeSchema(t *testing.T, cs *mcp.ClientSession) map[string]any {
+	t.Helper()
+
+	items, ok := propertyOf(t, schemaOf(t, cs, "draw_shapes"), "shapes")["items"].(map[string]any)
+	if !ok {
+		t.Fatal("draw_shapes' shapes has no item schema")
+	}
+
+	return items
+}
+
+func TestDrawShapesDescribesEachShape(t *testing.T) {
+	// The shape's constraints live on a nested struct, which the tag reader
+	// used to skip, so the enum and bounds were neither advertised nor
+	// checked against GIMP.
+	f := &fakeGimp{}
+	cs := connect(t, f.start(t))
+
+	shape := shapeSchema(t, cs)
+
+	if required, _ := shape["required"].([]any); !slices.Equal(required, []any{"type"}) {
+		t.Errorf("shape required = %#v, want only type", shape["required"])
+	}
+
+	kinds := propertyOf(t, shape, "type")["enum"]
+	if want := []any{"rectangle", "rounded_rectangle", "ellipse", "path"}; !reflect.DeepEqual(kinds, want) {
+		t.Errorf("type enum = %#v, want %#v", kinds, want)
+	}
+
+	width := propertyOf(t, shape, "stroke_width")
+	if width["minimum"] != float64(0) || width["maximum"] != float64(2000) || width["default"] != float64(2) {
+		t.Errorf("stroke_width minimum/maximum/default = %#v/%#v/%#v, want 0/2000/2",
+			width["minimum"], width["maximum"], width["default"])
+	}
+
+	if join := propertyOf(t, shape, "stroke_join"); join["default"] != "round" {
+		t.Errorf("stroke_join default = %#v, want round", join["default"])
+	}
+}
+
+func TestDrawShapesAppliesDefaultsToEachShape(t *testing.T) {
+	f := &fakeGimp{}
+	cs := connect(t, f.start(t))
+
+	callTool(t, cs, "draw_shapes", map[string]any{"shapes": []any{
+		map[string]any{"type": "ellipse", "x": 10, "y": 10, "width": 50, "height": 40, "color": "white"},
+		map[string]any{"type": "path", "d": "M 0 0 L 9 9", "stroke_color": "black", "stroke_width": 5},
+	}})
+
+	shapes, ok := f.args()["shapes"].([]any)
+	if !ok || len(shapes) != 2 {
+		t.Fatalf("shapes = %#v, want a list of two", f.args()["shapes"])
+	}
+
+	first, _ := shapes[0].(map[string]any)
+	if first["type"] != "ellipse" || first["stroke_width"] != float64(2) || first["stroke_join"] != "round" {
+		t.Errorf("first shape = %#v, want an ellipse with the outline defaults", first)
+	}
+
+	second, _ := shapes[1].(map[string]any)
+	if second["stroke_width"] != float64(5) {
+		t.Errorf("second shape stroke_width = %#v, want the 5 it was given", second["stroke_width"])
+	}
+}
+
+func TestDrawShapesRefusesBadShapes(t *testing.T) {
+	f := &fakeGimp{}
+	cs := connect(t, f.start(t))
+
+	for name, shape := range map[string]map[string]any{
+		"unknown type":     {"type": "star", "color": "red"},
+		"missing type":     {"color": "red"},
+		"stroke too wide":  {"type": "path", "d": "M 0 0 L 9 9", "stroke_color": "black", "stroke_width": 3000},
+		"unknown join":     {"type": "path", "d": "M 0 0 L 9 9", "stroke_color": "black", "stroke_join": "spiky"},
+		"fractional width": {"type": "ellipse", "width": 10.5, "height": 10, "color": "red"},
+	} {
+		res, err := cs.CallTool(t.Context(), &mcp.CallToolParams{
+			Name: "draw_shapes", Arguments: map[string]any{"shapes": []any{shape}},
+		})
+		if err == nil && !res.IsError {
+			t.Errorf("%s: draw_shapes succeeded, want a validation error", name)
+		}
 	}
 }

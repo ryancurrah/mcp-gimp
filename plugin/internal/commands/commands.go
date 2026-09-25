@@ -206,6 +206,21 @@ func (p Params) Object(key string) Params {
 	return out
 }
 
+// Objects reads an array of objects, such as draw_shapes' shapes.
+func (p Params) Objects(key string) []Params {
+	v, ok := p.raw(key)
+	if !ok {
+		return nil
+	}
+
+	var out []Params
+	if err := json.Unmarshal(v, &out); err != nil {
+		return nil
+	}
+
+	return out
+}
+
 // Any reads a parameter as a free-form value.
 func (p Params) Any(key string) any {
 	v, ok := p.raw(key)

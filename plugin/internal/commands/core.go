@@ -245,6 +245,7 @@ func newCanvas(p Params) (any, error) {
 
 	return map[string]any{
 		"image_id":       int(image),
+		"layer_id":       int(layer),
 		"width":          width,
 		"height":         height,
 		"color_mode":     mode,

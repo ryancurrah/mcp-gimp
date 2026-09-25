@@ -45,6 +45,10 @@ func registerDrawingTools(r *registrar) {
 		Name: "fill_ellipse", Command: "fill_ellipse",
 		Required: []string{"x", "y", "width", "height", "color"}, Description: fillEllipseDesc,
 	})
+	addObject[DrawShapesInput](r, toolDef{
+		Name: "draw_shapes", Command: "draw_shapes",
+		Required: []string{"shapes"}, Description: drawShapesDesc,
+	})
 	addObject[GradientFillInput](r, toolDef{
 		Name: "gradient_fill", Command: "gradient_fill",
 		Required: nil, Description: gradientFillDesc,
@@ -244,32 +248,51 @@ func (in *DrawEllipseInput) SetDefaults() {
 }
 
 // fillRectangleDesc documents the fill_rectangle tool.
-const fillRectangleDesc = `Fill a rectangular region with a solid color.
+const fillRectangleDesc = `Fill a rectangular region with a solid color, and outline it if asked.
 
 Parameters:
 - x, y: Top-left corner
 - width, height: Rectangle dimensions
-- color: Fill color (CSS name, hex, or rgb() string)
+- color: Fill color (CSS name, hex, or rgb() string), or "transparent" to
+  erase the shape, adding an alpha channel to the layer if it has none
+- stroke_color: Outline color, drawn centred on the shape's edge; omit for no
+  outline
+- stroke_width: Outline width in pixels (default 2)
+- stroke_join: Outline corner style: "round" (default), "miter" or "bevel"
 - layer_name: Target layer; defaults to active layer
 - layer_id: The layer_id another tool returned; unlike a name it survives renames. Identify the layer one way only
 - image_index: Target image index (default 0)
 
-Returns status dict.`
+Returns status dict, plus alpha_added: true when erasing gave the layer an
+alpha channel.`
 
 // FillRectangleInput holds the arguments for the fill_rectangle tool.
 type FillRectangleInput struct {
-	X          int     `json:"x" jsonschema:"Top-left corner"`
-	Y          int     `json:"y" jsonschema:"Top-left corner"`
-	Width      int     `json:"width" jsonschema:"Rectangle dimensions"`
-	Height     int     `json:"height" jsonschema:"Rectangle dimensions"`
-	Color      string  `json:"color" jsonschema:"Fill color (CSS name, hex, or rgb() string)"`
-	LayerName  *string `json:"layer_name" jsonschema:"Target layer; defaults to active layer"`
-	LayerID    *int    `json:"layer_id" jsonschema:"Identify the layer by the layer_id another tool returned; it names the image too, so image_index is not consulted"`
-	ImageIndex int     `json:"image_index" jsonschema:"Target image index (default 0)"`
+	X           int      `json:"x" jsonschema:"Top-left corner"`
+	Y           int      `json:"y" jsonschema:"Top-left corner"`
+	Width       int      `json:"width" jsonschema:"Rectangle dimensions"`
+	Height      int      `json:"height" jsonschema:"Rectangle dimensions"`
+	Color       string   `json:"color" jsonschema:"Fill color (CSS name, hex, or rgb() string), or \"transparent\" to erase the shape"`
+	StrokeColor *string  `json:"stroke_color" jsonschema:"Outline color, drawn centred on the shape's edge; omit for no outline"`
+	StrokeWidth *float64 `json:"stroke_width" jsonschema:"Outline width in pixels (default 2)" minimum:"0" maximum:"2000" gimp:"gimp-context-set-line-width.line-width"`
+	StrokeJoin  *string  `json:"stroke_join" jsonschema:"Outline corner style: \"round\" (default), \"miter\" or \"bevel\"" enum:"miter,round,bevel" gimp:"gimp-context-set-line-join-style.join-style"`
+	LayerName   *string  `json:"layer_name" jsonschema:"Target layer; defaults to active layer"`
+	LayerID     *int     `json:"layer_id" jsonschema:"Identify the layer by the layer_id another tool returned; it names the image too, so image_index is not consulted"`
+	ImageIndex  int      `json:"image_index" jsonschema:"Target image index (default 0)"`
+}
+
+// SetDefaults applies the defaults documented for the fill_rectangle tool.
+func (in *FillRectangleInput) SetDefaults() {
+	if in.StrokeWidth == nil {
+		in.StrokeWidth = ptr(2.0)
+	}
+	if in.StrokeJoin == nil {
+		in.StrokeJoin = ptr("round")
+	}
 }
 
 // fillRoundedRectangleDesc documents the fill_rounded_rectangle tool.
-const fillRoundedRectangleDesc = `Fill a rectangle with rounded corners.
+const fillRoundedRectangleDesc = `Fill a rectangle with rounded corners, and outline it if asked.
 
 Cards, banners, buttons and pills are this shape. A pill is a rounded
 rectangle whose radius is half its height.
@@ -279,51 +302,89 @@ Parameters:
 - width, height: Rectangle dimensions
 - radius: Corner radius in pixels
 - radius_x, radius_y: Per-axis radii, for elliptical corners
-- color: Fill color (CSS name, hex, or rgb() string)
+- color: Fill color (CSS name, hex, or rgb() string), or "transparent" to
+  erase the shape, adding an alpha channel to the layer if it has none
+- stroke_color: Outline color, drawn centred on the shape's edge; omit for no
+  outline
+- stroke_width: Outline width in pixels (default 2)
+- stroke_join: Outline corner style: "round" (default), "miter" or "bevel"
 - layer_name: Target layer; defaults to active layer
 - layer_id: The layer_id another tool returned; unlike a name it survives renames. Identify the layer one way only
 - image_index: Target image index (default 0)
 
-Returns status dict.`
+Returns status dict, plus alpha_added: true when erasing gave the layer an
+alpha channel.`
 
 // FillRoundedRectangleInput holds the arguments for the fill_rounded_rectangle tool.
 type FillRoundedRectangleInput struct {
-	X          int     `json:"x" jsonschema:"Top-left corner"`
-	Y          int     `json:"y" jsonschema:"Top-left corner"`
-	Width      int     `json:"width" jsonschema:"Rectangle dimensions"`
-	Height     int     `json:"height" jsonschema:"Rectangle dimensions"`
-	Radius     float64 `json:"radius" jsonschema:"Corner radius in pixels; sets both axes unless radius_x/radius_y are given"`
-	RadiusX    float64 `json:"radius_x" jsonschema:"Horizontal corner radius (defaults to radius)"`
-	RadiusY    float64 `json:"radius_y" jsonschema:"Vertical corner radius (defaults to radius)"`
-	Color      string  `json:"color" jsonschema:"Fill color (CSS name, hex, or rgb() string)"`
-	LayerName  *string `json:"layer_name" jsonschema:"Target layer; defaults to active layer"`
-	LayerID    *int    `json:"layer_id" jsonschema:"Identify the layer by the layer_id another tool returned; it names the image too, so image_index is not consulted"`
-	ImageIndex int     `json:"image_index" jsonschema:"Target image index (default 0)"`
+	X           int      `json:"x" jsonschema:"Top-left corner"`
+	Y           int      `json:"y" jsonschema:"Top-left corner"`
+	Width       int      `json:"width" jsonschema:"Rectangle dimensions"`
+	Height      int      `json:"height" jsonschema:"Rectangle dimensions"`
+	Radius      float64  `json:"radius" jsonschema:"Corner radius in pixels; sets both axes unless radius_x/radius_y are given"`
+	RadiusX     float64  `json:"radius_x" jsonschema:"Horizontal corner radius (defaults to radius)"`
+	RadiusY     float64  `json:"radius_y" jsonschema:"Vertical corner radius (defaults to radius)"`
+	Color       string   `json:"color" jsonschema:"Fill color (CSS name, hex, or rgb() string), or \"transparent\" to erase the shape"`
+	StrokeColor *string  `json:"stroke_color" jsonschema:"Outline color, drawn centred on the shape's edge; omit for no outline"`
+	StrokeWidth *float64 `json:"stroke_width" jsonschema:"Outline width in pixels (default 2)" minimum:"0" maximum:"2000" gimp:"gimp-context-set-line-width.line-width"`
+	StrokeJoin  *string  `json:"stroke_join" jsonschema:"Outline corner style: \"round\" (default), \"miter\" or \"bevel\"" enum:"miter,round,bevel" gimp:"gimp-context-set-line-join-style.join-style"`
+	LayerName   *string  `json:"layer_name" jsonschema:"Target layer; defaults to active layer"`
+	LayerID     *int     `json:"layer_id" jsonschema:"Identify the layer by the layer_id another tool returned; it names the image too, so image_index is not consulted"`
+	ImageIndex  int      `json:"image_index" jsonschema:"Target image index (default 0)"`
+}
+
+// SetDefaults applies the defaults documented for the fill_rounded_rectangle tool.
+func (in *FillRoundedRectangleInput) SetDefaults() {
+	if in.StrokeWidth == nil {
+		in.StrokeWidth = ptr(2.0)
+	}
+	if in.StrokeJoin == nil {
+		in.StrokeJoin = ptr("round")
+	}
 }
 
 // fillEllipseDesc documents the fill_ellipse tool.
-const fillEllipseDesc = `Fill an elliptical region with a solid color.
+const fillEllipseDesc = `Fill an elliptical region with a solid color, and outline it if asked.
 
 Parameters:
 - x, y: Top-left corner of the bounding box
 - width, height: Bounding box dimensions
-- color: Fill color (CSS name, hex, or rgb() string)
+- color: Fill color (CSS name, hex, or rgb() string), or "transparent" to
+  erase the shape, adding an alpha channel to the layer if it has none
+- stroke_color: Outline color, drawn centred on the shape's edge; omit for no
+  outline
+- stroke_width: Outline width in pixels (default 2)
+- stroke_join: Outline corner style: "round" (default), "miter" or "bevel"
 - layer_name: Target layer; defaults to active layer
 - layer_id: The layer_id another tool returned; unlike a name it survives renames. Identify the layer one way only
 - image_index: Target image index (default 0)
 
-Returns status dict.`
+Returns status dict, plus alpha_added: true when erasing gave the layer an
+alpha channel.`
 
 // FillEllipseInput holds the arguments for the fill_ellipse tool.
 type FillEllipseInput struct {
-	X          int     `json:"x" jsonschema:"Top-left corner of the bounding box"`
-	Y          int     `json:"y" jsonschema:"Top-left corner of the bounding box"`
-	Width      int     `json:"width" jsonschema:"Bounding box dimensions"`
-	Height     int     `json:"height" jsonschema:"Bounding box dimensions"`
-	Color      string  `json:"color" jsonschema:"Fill color (CSS name, hex, or rgb() string)"`
-	LayerName  *string `json:"layer_name" jsonschema:"Target layer; defaults to active layer"`
-	LayerID    *int    `json:"layer_id" jsonschema:"Identify the layer by the layer_id another tool returned; it names the image too, so image_index is not consulted"`
-	ImageIndex int     `json:"image_index" jsonschema:"Target image index (default 0)"`
+	X           int      `json:"x" jsonschema:"Top-left corner of the bounding box"`
+	Y           int      `json:"y" jsonschema:"Top-left corner of the bounding box"`
+	Width       int      `json:"width" jsonschema:"Bounding box dimensions"`
+	Height      int      `json:"height" jsonschema:"Bounding box dimensions"`
+	Color       string   `json:"color" jsonschema:"Fill color (CSS name, hex, or rgb() string), or \"transparent\" to erase the shape"`
+	StrokeColor *string  `json:"stroke_color" jsonschema:"Outline color, drawn centred on the shape's edge; omit for no outline"`
+	StrokeWidth *float64 `json:"stroke_width" jsonschema:"Outline width in pixels (default 2)" minimum:"0" maximum:"2000" gimp:"gimp-context-set-line-width.line-width"`
+	StrokeJoin  *string  `json:"stroke_join" jsonschema:"Outline corner style: \"round\" (default), \"miter\" or \"bevel\"" enum:"miter,round,bevel" gimp:"gimp-context-set-line-join-style.join-style"`
+	LayerName   *string  `json:"layer_name" jsonschema:"Target layer; defaults to active layer"`
+	LayerID     *int     `json:"layer_id" jsonschema:"Identify the layer by the layer_id another tool returned; it names the image too, so image_index is not consulted"`
+	ImageIndex  int      `json:"image_index" jsonschema:"Target image index (default 0)"`
+}
+
+// SetDefaults applies the defaults documented for the fill_ellipse tool.
+func (in *FillEllipseInput) SetDefaults() {
+	if in.StrokeWidth == nil {
+		in.StrokeWidth = ptr(2.0)
+	}
+	if in.StrokeJoin == nil {
+		in.StrokeJoin = ptr("round")
+	}
 }
 
 // gradientFillDesc documents the gradient_fill tool.
@@ -395,4 +456,95 @@ type GetPixelColorInput struct {
 	LayerName  *string `json:"layer_name" jsonschema:"Layer to sample from; defaults to active layer"`
 	LayerID    *int    `json:"layer_id" jsonschema:"Identify the layer by the layer_id another tool returned; it names the image too, so image_index is not consulted"`
 	Composite  *bool   `json:"composite" jsonschema:"Sample the flattened image as displayed (default true, or false when layer_name or layer_id is given)"`
+}
+
+// drawShapesDesc documents the draw_shapes tool.
+const drawShapesDesc = `Draw a list of shapes on one layer in one call.
+
+Each shape is what one fill_rectangle, fill_rounded_rectangle, fill_ellipse or
+fill_path call would draw. They are drawn in order, so later shapes cover
+earlier ones. Build a figure from its parts this way, such as a character's
+head, eyes and mouth, rather than one call per part. In the GUI the whole list
+is a single undo step.
+
+Every shape is checked before anything is drawn. If GIMP then fails on one,
+the error names its index and type, and the shapes before it stay drawn.
+
+Each shape has a type and its geometry:
+- rectangle, ellipse: x, y (top-left of the bounding box), width, height
+- rounded_rectangle: the same, plus radius
+- path: d, SVG path data in image pixels; an open path is closed for filling
+
+and paints a fill, an outline or both:
+- color: Fill color (CSS name, hex, or rgb() string), or "transparent" to
+  erase the shape, adding an alpha channel to the layer if it has none
+- stroke_color: Outline color, drawn centred on the shape's edge; omit for no
+  outline
+- stroke_width: Outline width in pixels (default 2)
+- stroke_join: Outline corner style: "round" (default), "miter" or "bevel"
+
+A shape with only stroke_color is an outline, and a path with only
+stroke_color is a line. An outlined face, two eyes and a smile:
+
+  shapes=[
+    {"type": "ellipse", "x": 100, "y": 100, "width": 200, "height": 200,
+     "color": "#1450d2", "stroke_color": "#0a1a40", "stroke_width": 6},
+    {"type": "ellipse", "x": 150, "y": 150, "width": 40, "height": 60, "color": "white"},
+    {"type": "ellipse", "x": 210, "y": 150, "width": 40, "height": 60, "color": "white"},
+    {"type": "path", "d": "M 160 250 Q 200 280 240 250",
+     "stroke_color": "black", "stroke_width": 4}
+  ]
+
+Parameters:
+- shapes: The shapes to draw, in order
+- layer_name: Target layer; defaults to active layer
+- layer_id: The layer_id another tool returned; unlike a name it survives renames. Identify the layer one way only
+- image_index: Target image index (default 0)
+
+Returns status dict with shapes_drawn, plus alpha_added: true when erasing gave
+the layer an alpha channel.`
+
+// DrawShapesInput holds the arguments for the draw_shapes tool.
+type DrawShapesInput struct {
+	Shapes     []Shape `json:"shapes" jsonschema:"The shapes to draw, in order; later shapes cover earlier ones"`
+	LayerName  *string `json:"layer_name" jsonschema:"Target layer; defaults to active layer"`
+	LayerID    *int    `json:"layer_id" jsonschema:"Identify the layer by the layer_id another tool returned; it names the image too, so image_index is not consulted"`
+	ImageIndex int     `json:"image_index" jsonschema:"Target image index (default 0)"`
+}
+
+// SetDefaults applies the defaults documented for the draw_shapes tool to
+// every shape.
+func (in *DrawShapesInput) SetDefaults() {
+	for i := range in.Shapes {
+		in.Shapes[i].SetDefaults()
+	}
+}
+
+// Shape is one entry of draw_shapes' list.
+//
+// Every field but type is omitempty: jsonschema.For marks a nested field
+// without it as required, and the top-level required list schemaFor sets
+// does not reach into list items.
+type Shape struct {
+	Type        string   `json:"type" jsonschema:"What to draw" enum:"rectangle,rounded_rectangle,ellipse,path" project:"the shape kinds draw_shapes draws"`
+	X           int      `json:"x,omitempty" jsonschema:"Left edge of the bounding box (rectangle, rounded_rectangle, ellipse)"`
+	Y           int      `json:"y,omitempty" jsonschema:"Top edge of the bounding box (rectangle, rounded_rectangle, ellipse)"`
+	Width       int      `json:"width,omitempty" jsonschema:"Bounding box width (rectangle, rounded_rectangle, ellipse)"`
+	Height      int      `json:"height,omitempty" jsonschema:"Bounding box height (rectangle, rounded_rectangle, ellipse)"`
+	Radius      float64  `json:"radius,omitempty" jsonschema:"Corner radius in pixels (rounded_rectangle)"`
+	D           string   `json:"d,omitempty" jsonschema:"SVG path data in image pixels (path); an open path is closed for filling"`
+	Color       *string  `json:"color,omitempty" jsonschema:"Fill color (CSS name, hex, or rgb() string), or \"transparent\" to erase the shape; omit for an outline only"`
+	StrokeColor *string  `json:"stroke_color,omitempty" jsonschema:"Outline color, drawn centred on the shape's edge; omit for no outline"`
+	StrokeWidth *float64 `json:"stroke_width,omitempty" jsonschema:"Outline width in pixels (default 2)" minimum:"0" maximum:"2000" gimp:"gimp-context-set-line-width.line-width"`
+	StrokeJoin  *string  `json:"stroke_join,omitempty" jsonschema:"Outline corner style: \"round\" (default), \"miter\" or \"bevel\"" enum:"miter,round,bevel" gimp:"gimp-context-set-line-join-style.join-style"`
+}
+
+// SetDefaults applies the defaults documented for one draw_shapes shape.
+func (in *Shape) SetDefaults() {
+	if in.StrokeWidth == nil {
+		in.StrokeWidth = ptr(2.0)
+	}
+	if in.StrokeJoin == nil {
+		in.StrokeJoin = ptr("round")
+	}
 }

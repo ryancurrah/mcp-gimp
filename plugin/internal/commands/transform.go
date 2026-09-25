@@ -20,8 +20,6 @@ func init() {
 	register("convert_color_mode", convertColorMode)
 	register("set_active_image", setActiveImage)
 	register("close_image", closeImage)
-	register("undo", undoSteps)
-	register("redo", redoSteps)
 }
 
 // applyInterpolation sets the interpolation the scale procedures read from
@@ -555,31 +553,4 @@ func saveToOwnXCF(image gimpbridge.ObjectID) error {
 	}
 
 	return saveAsXCF(image, path)
-}
-
-// undoSteps would walk the undo stack backwards; see walkUndo.
-func undoSteps(p Params) (any, error) {
-	return walkUndo(p, "undo")
-}
-
-// redoSteps would walk the undo stack forwards; see walkUndo.
-func redoSteps(p Params) (any, error) {
-	return walkUndo(p, "redo")
-}
-
-// walkUndo steps the image's undo stack.
-//
-// GIMP 2.10 exposed gimp-image-undo and gimp-image-redo; GIMP 3 dropped both,
-// keeping only undo *group* management (gimp-image-undo-group-start/end) and
-// enable/disable. Stepping the stack is a GUI action with no PDB equivalent,
-// so this reports what it cannot do rather than silently applying nothing.
-func walkUndo(p Params, proc string) (any, error) {
-	if _, err := imageAt(p.Int("image_index", 0)); err != nil {
-		return nil, err
-	}
-
-	return nil, fmt.Errorf(
-		"%s is not available: GIMP 3 removed the PDB procedures that step the "+
-			"undo stack, so the plug-in cannot undo or redo. Re-open the image "+
-			"or re-apply the inverse operation instead", proc)
 }

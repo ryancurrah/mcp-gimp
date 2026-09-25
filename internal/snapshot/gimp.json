@@ -427,6 +427,8 @@
     "gimp-context-get-font": [],
     "gimp-context-get-foreground": [],
     "gimp-context-get-opacity": [],
+    "gimp-context-pop": [],
+    "gimp-context-push": [],
     "gimp-context-set-antialias": [
       {
         "name": "antialias",
@@ -817,6 +819,13 @@
       }
     ],
     "gimp-drawable-get-width": [
+      {
+        "name": "drawable",
+        "type": "GimpDrawable",
+        "blurb": "The drawable"
+      }
+    ],
+    "gimp-drawable-has-alpha": [
       {
         "name": "drawable",
         "type": "GimpDrawable",
@@ -1749,6 +1758,20 @@
         "blurb": "The list of layers to select"
       }
     ],
+    "gimp-image-undo-group-end": [
+      {
+        "name": "image",
+        "type": "GimpImage",
+        "blurb": "The ID of the image in which to close an undo group"
+      }
+    ],
+    "gimp-image-undo-group-start": [
+      {
+        "name": "image",
+        "type": "GimpImage",
+        "blurb": "The ID of the image in which to open an undo group"
+      }
+    ],
     "gimp-item-get-image": [
       {
         "name": "item",
@@ -1883,6 +1906,13 @@
         "maximum": 1.7976931348623157e+308,
         "default": "0",
         "blurb": "Offset in y direction"
+      }
+    ],
+    "gimp-layer-add-alpha": [
+      {
+        "name": "layer",
+        "type": "GimpLayer",
+        "blurb": "The layer"
       }
     ],
     "gimp-layer-copy": [

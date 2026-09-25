@@ -45,14 +45,6 @@ func registerTransformTools(r *registrar) {
 		Name: "set_active_image", Command: "set_active_image",
 		Required: []string{"image_index"}, Description: setActiveImageDesc,
 	})
-	addObject[UndoInput](r, toolDef{
-		Name: "undo", Command: "undo",
-		Required: nil, Description: undoDesc,
-	})
-	addObject[RedoInput](r, toolDef{
-		Name: "redo", Command: "redo",
-		Required: nil, Description: redoDesc,
-	})
 	addObject[ConvertColorModeInput](r, toolDef{
 		Name: "convert_color_mode", Command: "convert_color_mode",
 		Required: []string{"mode"}, Description: convertColorModeDesc,
@@ -268,54 +260,6 @@ Returns status dict.`
 // SetActiveImageInput holds the arguments for the set_active_image tool.
 type SetActiveImageInput struct {
 	ImageIndex int `json:"image_index" jsonschema:"Index of the image to activate (from list_images)"`
-}
-
-// undoDesc documents the undo tool.
-const undoDesc = `Undo one or more operations on an image.
-
-Parameters:
-- steps: Number of undo steps (default 1)
-- image_index: Target image index (default 0)
-
-Returns: {steps_undone}
-
-Not available on GIMP 3: the PDB procedures that step the undo stack were removed, so this call always fails. Re-open the image or apply the inverse operation instead.`
-
-// UndoInput holds the arguments for the undo tool.
-type UndoInput struct {
-	Steps      *int `json:"steps" jsonschema:"Number of undo steps (default 1)"`
-	ImageIndex int  `json:"image_index" jsonschema:"Target image index (default 0)"`
-}
-
-// SetDefaults applies the defaults documented for the undo tool.
-func (in *UndoInput) SetDefaults() {
-	if in.Steps == nil {
-		in.Steps = ptr(1)
-	}
-}
-
-// redoDesc documents the redo tool.
-const redoDesc = `Redo one or more previously undone operations on an image.
-
-Parameters:
-- steps: Number of redo steps (default 1)
-- image_index: Target image index (default 0)
-
-Returns: {steps_redone}
-
-Not available on GIMP 3: the PDB procedures that step the undo stack were removed, so this call always fails. Re-open the image or apply the inverse operation instead.`
-
-// RedoInput holds the arguments for the redo tool.
-type RedoInput struct {
-	Steps      *int `json:"steps" jsonschema:"Number of redo steps (default 1)"`
-	ImageIndex int  `json:"image_index" jsonschema:"Target image index (default 0)"`
-}
-
-// SetDefaults applies the defaults documented for the redo tool.
-func (in *RedoInput) SetDefaults() {
-	if in.Steps == nil {
-		in.Steps = ptr(1)
-	}
 }
 
 // convertColorModeDesc documents the convert_color_mode tool.

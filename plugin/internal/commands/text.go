@@ -27,6 +27,13 @@ func addText(p Params) (any, error) {
 		return nil, fmt.Errorf("text is required")
 	}
 
+	return withUndoGroup(image, func() (any, error) {
+		return addTextLayer(p, image, content)
+	})
+}
+
+// addTextLayer renders add_text's text as a new layer on image.
+func addTextLayer(p Params, image gimpbridge.ObjectID, content string) (any, error) {
 	if color := p.String("color", ""); color != "" {
 		if err := run("gimp-context-set-foreground",
 			gimpbridge.Args{"foreground": gimpbridge.Color(color)}); err != nil {
@@ -290,6 +297,13 @@ func editText(p Params) (any, error) {
 		return nil, fmt.Errorf("layer is not a text layer")
 	}
 
+	return withUndoGroup(image, func() (any, error) {
+		return rewriteTextLayer(p, image, layer)
+	})
+}
+
+// rewriteTextLayer applies edit_text's changes to a text layer.
+func rewriteTextLayer(p Params, image, layer gimpbridge.ObjectID) (any, error) {
 	if err := restyleText(p, layer); err != nil {
 		return nil, err
 	}

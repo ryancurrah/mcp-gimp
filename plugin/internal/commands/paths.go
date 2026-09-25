@@ -1,6 +1,7 @@
 package commands
 
 import (
+	"errors"
 	"fmt"
 	"math"
 	"strings"
@@ -151,81 +152,186 @@ func applyPathStroke(p Params) error {
 		gimpbridge.Args{"antialias": p.Bool("antialias", true)})
 }
 
-// drawPath strokes the outline of an SVG path on a layer.
+// paintedPathResult is pathResult plus what painting the path reported: the
+// filled area's bounds, and whether a clear gave the layer an alpha channel.
+func paintedPathResult(path gimpbridge.ObjectID, keep, alphaAdded bool,
+	bounds map[string]any,
+) map[string]any {
+	result := pathResult(path, keep)
+	if alphaAdded {
+		result["alpha_added"] = true
+	}
+
+	if bounds != nil {
+		result["bounds"] = bounds
+	}
+
+	return result
+}
+
+// fillPathArea selects a path, fills it, reads the filled area's bounds and
+// clears the selection again, on the error path too. Bounds are nil when the
+// path encloses no area, such as a single straight line.
+func fillPathArea(image, drawable, path gimpbridge.ObjectID, fill string,
+) (alphaAdded bool, bounds map[string]any, err error) {
+	if err := run("gimp-image-select-item", gimpbridge.Args{
+		"image": image, "operation": "replace", "item": path,
+	}); err != nil {
+		return false, nil, err
+	}
+
+	defer func() {
+		err = errors.Join(err, run("gimp-selection-none", gimpbridge.Args{"image": image}))
+	}()
+
+	if alphaAdded, err = fillSelectionWith(drawable, fill); err != nil {
+		return false, nil, err
+	}
+
+	state, err := selectionState(image)
+	if err != nil {
+		return alphaAdded, nil, err
+	}
+
+	if nonEmpty, _ := state["non_empty"].(bool); nonEmpty {
+		bounds = map[string]any{
+			"x": state["x1"], "y": state["y1"], "width": state["width"], "height": state["height"],
+		}
+	}
+
+	return alphaAdded, bounds, nil
+}
+
+// paintPath fills and outlines an imported path as the spec says.
+//
+// The outline's context is set first, so a value GIMP refuses fails the call
+// before the fill has changed any pixels. The fill clears the selection
+// before the outline is drawn: GIMP clips a path stroke to the selection, so
+// stroking with the path still selected would lose the outline's outer half.
+func paintPath(image, drawable, path gimpbridge.ObjectID, spec paintSpec,
+) (alphaAdded bool, bounds map[string]any, err error) {
+	if spec.Stroke != "" {
+		if err := applyOutline(spec); err != nil {
+			return false, nil, err
+		}
+	}
+
+	if spec.Fill != "" {
+		if alphaAdded, bounds, err = fillPathArea(image, drawable, path, spec.Fill); err != nil {
+			return false, nil, err
+		}
+	}
+
+	if spec.Stroke == "" {
+		return alphaAdded, bounds, nil
+	}
+
+	return alphaAdded, bounds, run("gimp-drawable-edit-stroke-item",
+		gimpbridge.Args{"drawable": drawable, "item": path})
+}
+
+// drawPath strokes the outline of an SVG path on a layer, filling it first
+// when asked.
 func drawPath(p Params) (any, error) {
 	image, drawable, err := target(p)
 	if err != nil {
 		return nil, err
 	}
 
-	if err := applyPathStroke(p); err != nil {
+	fill := p.String("fill", "")
+	if err := (paintSpec{Fill: fill}).checkColors(); err != nil {
 		return nil, err
 	}
 
-	keep := p.Bool("keep_path", false)
+	return withUndoGroup(image, func() (any, error) {
+		// The fill sets its colour on a copy of the context, so the
+		// foreground set here, or the current one when color is left out, is
+		// still the stroke colour afterwards.
+		if err := applyPathStroke(p); err != nil {
+			return nil, err
+		}
 
-	path, err := withPath(image, p.String("d", ""), keep, func(path gimpbridge.ObjectID) error {
-		return run("gimp-drawable-edit-stroke-item",
-			gimpbridge.Args{"drawable": drawable, "item": path})
+		keep := p.Bool("keep_path", false)
+
+		var (
+			alphaAdded bool
+			bounds     map[string]any
+		)
+
+		path, err := withPath(image, p.String("d", ""), keep, func(path gimpbridge.ObjectID) error {
+			if fill != "" {
+				var err error
+				if alphaAdded, bounds, err = fillPathArea(image, drawable, path, fill); err != nil {
+					return err
+				}
+			}
+
+			return run("gimp-drawable-edit-stroke-item",
+				gimpbridge.Args{"drawable": drawable, "item": path})
+		})
+		if err != nil {
+			return nil, err
+		}
+
+		if err := flush(); err != nil {
+			return nil, err
+		}
+
+		return paintedPathResult(path, keep, alphaAdded, bounds), nil
 	})
-	if err != nil {
-		return nil, err
-	}
-
-	if err := flush(); err != nil {
-		return nil, err
-	}
-
-	return pathResult(path, keep), nil
 }
 
-// fillPath fills the interior of an SVG path with a solid colour.
+// fillPath fills the interior of an SVG path with a solid colour, outlining
+// it too when asked.
 func fillPath(p Params) (any, error) {
 	image, drawable, err := target(p)
 	if err != nil {
 		return nil, err
 	}
 
-	color := p.String("color", "")
-	if color == "" {
+	if p.String("color", "") == "" {
 		return nil, fmt.Errorf("color is required")
 	}
 
-	if err := run("gimp-context-set-foreground",
-		gimpbridge.Args{"foreground": gimpbridge.Color(color)}); err != nil {
-		return nil, err
-	}
-
-	if err := run("gimp-context-set-antialias",
-		gimpbridge.Args{"antialias": p.Bool("antialias", true)}); err != nil {
-		return nil, err
-	}
-
-	keep := p.Bool("keep_path", false)
-
-	path, err := withPath(image, p.String("d", ""), keep, func(path gimpbridge.ObjectID) error {
-		if err := run("gimp-image-select-item", gimpbridge.Args{
-			"image": image, "operation": "replace", "item": path,
-		}); err != nil {
-			return err
-		}
-
-		if err := run("gimp-drawable-edit-fill",
-			gimpbridge.Args{"drawable": drawable, "fill-type": "foreground"}); err != nil {
-			return err
-		}
-
-		return run("gimp-selection-none", gimpbridge.Args{"image": image})
-	})
+	spec, err := paintSpecFrom(p)
 	if err != nil {
 		return nil, err
 	}
 
-	if err := flush(); err != nil {
+	if err := spec.checkColors(); err != nil {
 		return nil, err
 	}
 
-	return pathResult(path, keep), nil
+	return withUndoGroup(image, func() (any, error) {
+		if err := run("gimp-context-set-antialias",
+			gimpbridge.Args{"antialias": p.Bool("antialias", true)}); err != nil {
+			return nil, err
+		}
+
+		keep := p.Bool("keep_path", false)
+
+		var (
+			alphaAdded bool
+			bounds     map[string]any
+		)
+
+		path, err := withPath(image, p.String("d", ""), keep, func(path gimpbridge.ObjectID) error {
+			var err error
+
+			alphaAdded, bounds, err = paintPath(image, drawable, path, spec)
+
+			return err
+		})
+		if err != nil {
+			return nil, err
+		}
+
+		if err := flush(); err != nil {
+			return nil, err
+		}
+
+		return paintedPathResult(path, keep, alphaAdded, bounds), nil
+	})
 }
 
 // selectPath renders an SVG path into the selection.

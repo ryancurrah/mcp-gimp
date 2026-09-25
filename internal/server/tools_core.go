@@ -82,6 +82,7 @@ Parameters:
 
 Returns:
 - image_id: internal GIMP image ID
+- layer_id: the background layer's ID, for the tools that take layer_id
 - width / height: confirmed dimensions
 - color_mode: confirmed mode
 - display_opened: whether a GIMP window was opened

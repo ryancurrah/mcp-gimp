@@ -36,16 +36,37 @@ is better than assembling the same thing from three `call_api` calls.
 ## Filling shapes
 
 Fill in one step with the fill tools. They select the shape, fill it and clear
-the selection so nothing is left selected behind you.
+the selection so nothing is left selected behind you. Give `stroke_color` to
+outline the shape in the same call; the outline is centred on the edge.
 
 ```
 fill_rectangle(x=20, y=20, width=120, height=80, color="#ff8800")
-fill_ellipse(x=180, y=40, width=100, height=100, color="#22aa55")
+fill_ellipse(x=180, y=40, width=100, height=100, color="#22aa55",
+             stroke_color="#0a3a1a", stroke_width=4)
 ```
 
-`draw_rectangle` and `draw_ellipse` stroke an outline instead; use
+`draw_rectangle` and `draw_ellipse` stroke an outline alone; use
 `line_width` to set its weight. Do not try to fill a shape by stroking it
 repeatedly — the result has seams and soft edges.
+
+## Many shapes at once
+
+A figure built from parts — a character's head, eyes, nose and mouth — is one
+`draw_shapes` call rather than one call per part. Shapes are drawn in order on
+one layer, so list them back to front.
+
+```
+draw_shapes(layer_name="face", shapes=[
+    {"type": "ellipse", "x": 100, "y": 100, "width": 200, "height": 200,
+     "color": "#1450d2", "stroke_color": "#0a1a40", "stroke_width": 6},
+    {"type": "ellipse", "x": 150, "y": 150, "width": 40, "height": 60, "color": "white"},
+    {"type": "path", "d": "M 160 250 Q 200 280 240 250",
+     "stroke_color": "black", "stroke_width": 4},
+])
+```
+
+Every shape is checked before anything is drawn, and the whole list is one
+undo step in the GUI.
 
 ## Curves
 
@@ -57,16 +78,17 @@ draw_path(d="M 100 300 C 150 100 350 100 400 300", width=8, color="#0044cc")
 fill_path(d="M 200 200 Q 300 50 400 200 Z", color="#dd5500")
 ```
 
-To outline a curved shape, select it and fill twice:
+To outline a curved shape, give `fill_path` a `stroke_color`. It returns the
+filled area's `bounds`, which is a quick check that the shape landed where
+you meant.
 
 ```
-select_path(d="M 60 360 C 120 250 220 250 280 360 Z")
-modify_selection(operation="grow", amount=6)
-fill_selection(color="#222222")
-modify_selection(operation="shrink", amount=6)
-fill_selection(color="#88cc88")
-select_none()
+fill_path(d="M 60 360 C 120 250 220 250 280 360 Z", color="#88cc88",
+          stroke_color="#222222", stroke_width=6)
 ```
+
+`draw_path(..., fill=...)` is the same thing from the other side: a stroke
+with its interior filled.
 
 `keep_path=True` leaves the path in the Paths dockable and returns its
 `path_id`; `list_paths` and `path_to_selection` work with paths drawn in the
@@ -85,6 +107,10 @@ Every colour argument takes a CSS string:
 
 `set_colors` changes the foreground and background that later drawing
 operations inherit.
+
+On the fill tools and in `draw_shapes`, `color="transparent"` erases the shape
+to transparency instead of painting it, and gives the layer an alpha channel
+first if it has none.
 
 ## Selections
 
@@ -135,7 +161,9 @@ get_state_snapshot(region={"x": 180, "y": 40,
                            "width": 120, "height": 120})    # zoom in
 ```
 
-If something is wrong, fix the cause — undo it or repaint that layer. Painting
+If something is wrong, fix the cause — erase it with `color="transparent"` or
+clear and redraw that layer. There is no undo tool: GIMP 3 gives plug-ins no
+way to step the undo stack. In the GUI, each drawing call is one Ctrl+Z. Painting
 over a mistake leaves the original underneath and compounds.
 
 ## Exporting

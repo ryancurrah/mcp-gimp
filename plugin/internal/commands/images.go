@@ -1,6 +1,7 @@
 package commands
 
 import (
+	"errors"
 	"fmt"
 	"math"
 	"sync"
@@ -234,6 +235,22 @@ func layerAt(image gimpbridge.ObjectID, index int) (gimpbridge.ObjectID, error) 
 // flush pushes pending drawing operations to the display.
 func flush() error {
 	return run("gimp-displays-flush", nil)
+}
+
+// withUndoGroup runs fn inside one undo group on image, so a command made of
+// several PDB steps is a single Ctrl+Z in the GUI. GIMP 3 has no procedure
+// that steps the undo stack, so this is the only undo a plug-in can shape.
+// The group is closed on the error path too.
+func withUndoGroup(image gimpbridge.ObjectID, fn func() (any, error)) (result any, err error) {
+	if err := run("gimp-image-undo-group-start", gimpbridge.Args{"image": image}); err != nil {
+		return nil, err
+	}
+
+	defer func() {
+		err = errors.Join(err, run("gimp-image-undo-group-end", gimpbridge.Args{"image": image}))
+	}()
+
+	return fn()
 }
 
 // imageSize reads an image's pixel dimensions.

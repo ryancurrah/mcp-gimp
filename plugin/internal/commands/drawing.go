@@ -1,7 +1,9 @@
 package commands
 
 import (
+	"errors"
 	"fmt"
+	"strings"
 
 	"github.com/ryancurrah/mcp-gimp/plugin/internal/gimpbridge"
 )
@@ -198,32 +200,236 @@ func strokeShape(p Params, selectProc string) (any, error) {
 		return nil, err
 	}
 
-	if err := applyStroke(p); err != nil {
-		return nil, err
+	return withUndoGroup(image, func() (any, error) {
+		if err := applyStroke(p); err != nil {
+			return nil, err
+		}
+
+		if err := applyLineStroke(p); err != nil {
+			return nil, err
+		}
+
+		if err := run(selectProc, shapeSelectArgs(p, selectProc, image)); err != nil {
+			return nil, err
+		}
+
+		if err := run("gimp-drawable-edit-stroke-selection",
+			gimpbridge.Args{"drawable": drawable}); err != nil {
+			return nil, err
+		}
+
+		if err := run("gimp-selection-none", gimpbridge.Args{"image": image}); err != nil {
+			return nil, err
+		}
+
+		if err := flush(); err != nil {
+			return nil, err
+		}
+
+		return map[string]any{"status": "success"}, nil
+	})
+}
+
+// paintSpec is what a filled shape paints: a fill, an outline or both.
+type paintSpec struct {
+	// Fill is a CSS colour, "transparent" to clear the shape to alpha, or
+	// empty for no fill.
+	Fill string
+	// Stroke is the outline's CSS colour, or empty for no outline.
+	Stroke      string
+	StrokeWidth float64
+	Join        string
+}
+
+// paintSpecFrom reads the fill and outline arguments the fill tools and
+// draw_shapes share. The fill tools call the fill "color", as the rest of the
+// tool set does, and the outline "stroke_color", so neither can be mistaken
+// for the other.
+func paintSpecFrom(p Params) (paintSpec, error) {
+	spec := paintSpec{
+		Fill:        p.String("color", ""),
+		Stroke:      p.String("stroke_color", ""),
+		StrokeWidth: p.Float("stroke_width", 2),
+		Join:        p.String("stroke_join", "round"),
 	}
 
-	if err := applyLineStroke(p); err != nil {
-		return nil, err
+	if spec.Fill == "" && spec.Stroke == "" {
+		return paintSpec{}, fmt.Errorf("give color to fill the shape, stroke_color to outline it, or both")
+	}
+
+	if isTransparentFill(spec.Stroke) {
+		return paintSpec{}, fmt.Errorf(
+			"stroke_color %q cannot erase; give color=\"transparent\" to clear the shape", spec.Stroke)
+	}
+
+	return spec, nil
+}
+
+// clearsToAlpha reports whether a fill colour asks for the shape to be
+// cleared rather than painted. Only "transparent" does: fill_layer also reads
+// "none" that way, but in SVG, where the shape tools' path data comes from,
+// "none" means no fill at all, so it is left to fail as a colour.
+func clearsToAlpha(fill string) bool {
+	return strings.EqualFold(fill, "transparent")
+}
+
+// checkColors parses the spec's colours before anything is drawn, so a bad
+// one is refused with the canvas untouched rather than after the fill.
+func (spec paintSpec) checkColors() error {
+	for _, color := range []string{spec.Fill, spec.Stroke} {
+		if color == "" || clearsToAlpha(color) {
+			continue
+		}
+
+		if _, err := gimpbridge.NormalizeColor(color); err != nil {
+			return err
+		}
+	}
+
+	return nil
+}
+
+// withContext runs fn on a copy of GIMP's context, which is put back
+// afterwards, on the error path too.
+func withContext(fn func() error) error {
+	if err := run("gimp-context-push", nil); err != nil {
+		return err
+	}
+
+	return errors.Join(fn(), run("gimp-context-pop", nil))
+}
+
+// fillSelectionWith fills the selection on drawable, or clears it to
+// transparency when the colour is "transparent".
+//
+// The fill colour is set on a copy of the context, so the foreground an
+// outline or a draw_path without a color strokes with is still in place
+// afterwards, and no fill colour is left behind for later commands.
+//
+// Clearing a layer without an alpha channel would paint the background
+// colour, so the layer is given one first; the result reports whether that
+// happened.
+func fillSelectionWith(drawable gimpbridge.ObjectID, fill string) (alphaAdded bool, err error) {
+	if !clearsToAlpha(fill) {
+		return false, withContext(func() error {
+			if err := run("gimp-context-set-foreground",
+				gimpbridge.Args{"foreground": gimpbridge.Color(fill)}); err != nil {
+				return err
+			}
+
+			return run("gimp-drawable-edit-fill",
+				gimpbridge.Args{"drawable": drawable, "fill-type": "foreground"})
+		})
+	}
+
+	alphaAdded, err = ensureAlpha(drawable)
+	if err != nil {
+		return false, err
+	}
+
+	return alphaAdded, run("gimp-drawable-edit-fill",
+		gimpbridge.Args{"drawable": drawable, "fill-type": "transparent"})
+}
+
+// ensureAlpha adds an alpha channel to a layer that has none and reports
+// whether it did.
+func ensureAlpha(layer gimpbridge.ObjectID) (bool, error) {
+	v, err := run1("gimp-drawable-has-alpha", gimpbridge.Args{"drawable": layer})
+	if err != nil {
+		return false, err
+	}
+
+	hasAlpha, ok := v.(bool)
+	if !ok {
+		return false, fmt.Errorf("gimp-drawable-has-alpha returned %T, want a boolean", v)
+	}
+
+	if hasAlpha {
+		return false, nil
+	}
+
+	return true, run("gimp-layer-add-alpha", gimpbridge.Args{"layer": layer})
+}
+
+// applyOutline sets the context so the stroke procedures draw a plain line in
+// the spec's colour, width and join.
+//
+// It uses the line stroke method for the reason applyLineStroke does. The
+// cap is set as well, round like draw_path's default, so an outline never
+// depends on what an earlier command left in the context.
+func applyOutline(spec paintSpec) error {
+	if err := run("gimp-context-set-foreground",
+		gimpbridge.Args{"foreground": gimpbridge.Color(spec.Stroke)}); err != nil {
+		return err
+	}
+
+	if err := run("gimp-context-set-stroke-method",
+		gimpbridge.Args{"stroke-method": "line"}); err != nil {
+		return err
+	}
+
+	if err := run("gimp-context-set-line-width",
+		gimpbridge.Args{"line-width": spec.StrokeWidth}); err != nil {
+		return err
+	}
+
+	if err := run("gimp-context-set-line-join-style",
+		gimpbridge.Args{"join-style": spec.Join}); err != nil {
+		return err
+	}
+
+	return run("gimp-context-set-line-cap-style", gimpbridge.Args{"cap-style": "round"})
+}
+
+// paintShape selects a rectangle, rounded rectangle or ellipse, fills it and
+// outlines it as the spec says, then clears the selection, on the error path
+// too, so a failure leaves nothing selected.
+//
+// The outline's context is set first, so a value GIMP refuses fails the call
+// before the fill has changed any pixels. GIMP strokes a selection on both
+// sides of its edge, so the outline is centred on the shape's edge the way
+// draw_path's is on its path.
+func paintShape(image, drawable gimpbridge.ObjectID, p Params, selectProc string,
+	spec paintSpec,
+) (alphaAdded bool, err error) {
+	if spec.Stroke != "" {
+		if err := applyOutline(spec); err != nil {
+			return false, err
+		}
 	}
 
 	if err := run(selectProc, shapeSelectArgs(p, selectProc, image)); err != nil {
-		return nil, err
+		return false, err
 	}
 
-	if err := run("gimp-drawable-edit-stroke-selection",
-		gimpbridge.Args{"drawable": drawable}); err != nil {
-		return nil, err
+	defer func() {
+		err = errors.Join(err, run("gimp-selection-none", gimpbridge.Args{"image": image}))
+	}()
+
+	if spec.Fill != "" {
+		if alphaAdded, err = fillSelectionWith(drawable, spec.Fill); err != nil {
+			return false, err
+		}
 	}
 
-	if err := run("gimp-selection-none", gimpbridge.Args{"image": image}); err != nil {
-		return nil, err
+	if spec.Stroke == "" {
+		return alphaAdded, nil
 	}
 
-	if err := flush(); err != nil {
-		return nil, err
+	return alphaAdded, run("gimp-drawable-edit-stroke-selection",
+		gimpbridge.Args{"drawable": drawable})
+}
+
+// paintResult is the status object the fill commands return, noting when a
+// clear gave the layer an alpha channel, since that changes the layer for
+// every later edit.
+func paintResult(alphaAdded bool) map[string]any {
+	result := map[string]any{"status": "success"}
+	if alphaAdded {
+		result["alpha_added"] = true
 	}
 
-	return map[string]any{"status": "success"}, nil
+	return result
 }
 
 // fillRectangle fills a rectangular area.
@@ -241,38 +447,35 @@ func fillRoundedRectangle(p Params) (any, error) {
 	return fillShape(p, selectRoundRectangleProc)
 }
 
-// fillShape selects a shape, fills it and clears the selection.
+// fillShape selects a shape, fills it, outlines it if asked and clears the
+// selection.
 func fillShape(p Params, selectProc string) (any, error) {
 	image, drawable, err := target(p)
 	if err != nil {
 		return nil, err
 	}
 
-	if color := p.String("color", ""); color != "" {
-		if err := run("gimp-context-set-foreground",
-			gimpbridge.Args{"foreground": gimpbridge.Color(color)}); err != nil {
+	spec, err := paintSpecFrom(p)
+	if err != nil {
+		return nil, err
+	}
+
+	if err := spec.checkColors(); err != nil {
+		return nil, err
+	}
+
+	return withUndoGroup(image, func() (any, error) {
+		alphaAdded, err := paintShape(image, drawable, p, selectProc, spec)
+		if err != nil {
 			return nil, err
 		}
-	}
 
-	if err := run(selectProc, shapeSelectArgs(p, selectProc, image)); err != nil {
-		return nil, err
-	}
+		if err := flush(); err != nil {
+			return nil, err
+		}
 
-	if err := run("gimp-drawable-edit-fill",
-		gimpbridge.Args{"drawable": drawable, "fill-type": "foreground"}); err != nil {
-		return nil, err
-	}
-
-	if err := run("gimp-selection-none", gimpbridge.Args{"image": image}); err != nil {
-		return nil, err
-	}
-
-	if err := flush(); err != nil {
-		return nil, err
-	}
-
-	return map[string]any{"status": "success"}, nil
+		return paintResult(alphaAdded), nil
+	})
 }
 
 // gradientFill paints a gradient across the drawable.

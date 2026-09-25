@@ -77,8 +77,15 @@ func (r gimpRef) String() string {
 	return s
 }
 
-// argSpecs reads the declarations off an input struct.
+// argSpecs reads the declarations off an input struct, and off the structs
+// its arguments hold, so a constraint on a nested field is advertised and
+// tested like any other. A nested argument is named by its path: region.x
+// for a field of an object, shapes[].type for a field of each list element.
 func argSpecs(t reflect.Type) ([]argSpec, error) {
+	return argSpecsAt(t, "")
+}
+
+func argSpecsAt(t reflect.Type, prefix string) ([]argSpec, error) {
 	defaults, err := defaultsOf(t)
 	if err != nil {
 		return nil, err
@@ -94,15 +101,69 @@ func argSpecs(t reflect.Type) ([]argSpec, error) {
 
 		spec, err := parseField(f)
 		if err != nil {
-			return nil, fmt.Errorf("argument %s: %w", name, err)
+			return nil, fmt.Errorf("argument %s%s: %w", prefix, name, err)
 		}
 
-		spec.Name = name
+		spec.Name = prefix + name
 		spec.Default = defaults[name]
 		specs = append(specs, spec)
+
+		if elem, sep, ok := nestedStruct(f.Type); ok {
+			nested, err := argSpecsAt(elem, spec.Name+sep)
+			if err != nil {
+				return nil, err
+			}
+
+			specs = append(specs, nested...)
+		}
 	}
 
 	return specs, nil
+}
+
+// nestedStruct reports the struct an argument holds, directly, through a
+// pointer or as the elements of a list, and the separator that joins the
+// argument's name to its fields' names.
+func nestedStruct(t reflect.Type) (reflect.Type, string, bool) {
+	if t.Kind() == reflect.Pointer {
+		t = t.Elem()
+	}
+
+	switch {
+	case t.Kind() == reflect.Struct:
+		return t, ".", true
+	case t.Kind() == reflect.Slice && t.Elem().Kind() == reflect.Struct:
+		return t.Elem(), "[].", true
+	default:
+		return nil, "", false
+	}
+}
+
+// property finds the schema of an argument named the way argSpecs names it,
+// walking into nested objects and list items.
+func property(s *jsonschema.Schema, name string) (*jsonschema.Schema, bool) {
+	for {
+		head, rest, nested := strings.Cut(name, ".")
+
+		list := strings.HasSuffix(head, "[]")
+
+		prop, ok := s.Properties[strings.TrimSuffix(head, "[]")]
+		if !ok {
+			return nil, false
+		}
+
+		if list {
+			if prop = prop.Items; prop == nil {
+				return nil, false
+			}
+		}
+
+		if !nested {
+			return prop, true
+		}
+
+		s, name = prop, rest
+	}
 }
 
 func parseField(f reflect.StructField) (argSpec, error) {
@@ -223,7 +284,7 @@ func fieldsOf(v any) (map[string]json.RawMessage, error) {
 // applySpecs puts what the tags declare onto the inferred schema.
 func applySpecs(s *jsonschema.Schema, specs []argSpec) error {
 	for _, spec := range specs {
-		prop, ok := s.Properties[spec.Name]
+		prop, ok := property(s, spec.Name)
 		if !ok {
 			return fmt.Errorf("no schema property for argument %q", spec.Name)
 		}

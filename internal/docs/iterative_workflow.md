@@ -99,10 +99,14 @@ If the answer is no, fix the cause.
 
 ## Fix, do not paint over
 
-When something is wrong, undo it or clear and redraw that layer:
+When something is wrong, erase it or clear and redraw that layer. GIMP 3
+gives plug-ins no way to step the undo stack, so there is no undo tool; the
+fill tools erase instead:
 
 ```
-undo(steps=1)
+fill_ellipse(layer_name="eyes", x=140, y=90, width=40, height=40,
+             color="transparent")          # erase one misplaced eye
+fill_layer(layer_name="eyes", color="transparent")   # or clear the layer
 ```
 
 Painting a correction on top leaves the original underneath. It shows through

@@ -2,7 +2,7 @@
 
 [![License: MIT](https://img.shields.io/badge/License-MIT-yellow.svg)](https://opensource.org/licenses/MIT)
 
-Drive [GIMP 3](https://www.gimp.org/) from an MCP client. 93 tools covering
+Drive [GIMP 3](https://www.gimp.org/) from an MCP client. 92 tools covering
 canvases, layers, selections, drawing, text, colour adjustments, GEGL filters
 and export, plus a typed escape hatch onto GIMP's full procedural database.
 
